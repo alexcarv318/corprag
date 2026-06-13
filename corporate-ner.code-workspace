@@ -1,0 +1,21 @@
+{
+	"folders": [
+		{
+			"path": "../corporate-ner"
+		},
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"sqltools.useNodeRuntime": true,
+		"sqltools.connections": [
+			{
+				"previewLimit": 50,
+				"driver": "SQLite",
+				"name": "corpner-local",
+				"database": "${workspaceFolder:corporate-ner}/.chainlit/corprag.sqlite3"
+			}
+		]
+	}
+}

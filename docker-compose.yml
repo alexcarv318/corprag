@@ -1,0 +1,114 @@
+services:
+  neo4j:
+    image: neo4j:${NEO4J_VERSION:-2026.04.0}-enterprise
+    container_name: corporate-rag-neo4j
+    restart: unless-stopped
+    ports:
+      - "${NEO4J_HTTP_PORT:-7474}:7474"
+      - "${NEO4J_BOLT_PORT:-7687}:7687"
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:?set NEO4J_PASSWORD in .env}
+      NEO4J_ACCEPT_LICENSE_AGREEMENT: "yes"
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_dbms_security_procedures_unrestricted: "apoc.*,n10s.*"
+      NEO4J_dbms_security_procedures_allowlist: "apoc.*,n10s.*"
+      NEO4J_server_memory_heap_initial__size: ${NEO4J_HEAP_INITIAL:-1G}
+      NEO4J_server_memory_heap_max__size: ${NEO4J_HEAP_MAX:-2G}
+      NEO4J_server_memory_pagecache_size: ${NEO4J_PAGECACHE:-1G}
+    volumes:
+      - ${NEO4J_HOME:?set NEO4J_HOME in .env}/data:/data
+      - ${NEO4J_HOME:?set NEO4J_HOME in .env}/logs:/logs
+      - ${NEO4J_HOME:?set NEO4J_HOME in .env}/import:/var/lib/neo4j/import
+      - ${NEO4J_HOME:?set NEO4J_HOME in .env}/plugins:/plugins
+      - ${NEO4J_HOME:?set NEO4J_HOME in .env}/ontologies:/var/lib/neo4j/import/ontologies
+    healthcheck:
+      test: cypher-shell -u neo4j -p "${NEO4J_PASSWORD}" "RETURN 1"
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 40s
+    networks:
+      - corporate-rag
+
+  app:
+    build: .
+    container_name: corporate-rag-app
+    restart: unless-stopped
+    environment:
+      CORPORATE_RAG_NEO4J_URI: bolt://neo4j:7687
+      CORPORATE_RAG_NEO4J_USER: neo4j
+      CORPORATE_RAG_NEO4J_PASSWORD: ${NEO4J_PASSWORD}
+      CORPORATE_RAG_NEO4J_CORPORATE_DATABASE: neo4j
+      CORPORATE_RAG_NEO4J_LAW_DATABASE: law
+    ports:
+      - "${CORPORATE_RAG_APP_PORT:-8088}:8088"
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    networks:
+      - corporate-rag
+
+  mcp-neo4j:
+    image: mcp/neo4j-cypher:latest
+    container_name: corporate-rag-mcp-neo4j
+    restart: unless-stopped
+    ports:
+      - "${NEO4J_CYPHER_MCP_PORT:-18800}:8000"
+    environment:
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USERNAME: neo4j
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD}
+      NEO4J_DATABASE: neo4j
+      NEO4J_TRANSPORT: http
+      NEO4J_MCP_SERVER_HOST: 0.0.0.0
+      NEO4J_MCP_SERVER_PORT: "8000"
+      NEO4J_MCP_SERVER_PATH: /mcp/
+      NEO4J_MCP_SERVER_ALLOWED_HOSTS: "mcp-neo4j,mcp-neo4j:8000,corporate-rag-mcp-neo4j,corporate-rag-mcp-neo4j:8000,localhost,localhost:18800,127.0.0.1,127.0.0.1:18800"
+      NEO4J_NAMESPACE: cypher
+      NEO4J_READ_TIMEOUT: "60"
+      NEO4J_RESPONSE_TOKEN_LIMIT: "8000"
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    healthcheck:
+      test: python -c "import socket; socket.create_connection(('127.0.0.1', 8000), timeout=2).close()"
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - corporate-rag
+
+  mcp-neo4j-law:
+    image: mcp/neo4j-cypher:latest
+    container_name: corporate-rag-mcp-neo4j-law
+    restart: unless-stopped
+    ports:
+      - "${NEO4J_LAW_CYPHER_MCP_PORT:-18801}:8000"
+    environment:
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USERNAME: neo4j
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD}
+      NEO4J_DATABASE: law
+      NEO4J_TRANSPORT: http
+      NEO4J_MCP_SERVER_HOST: 0.0.0.0
+      NEO4J_MCP_SERVER_PORT: "8000"
+      NEO4J_MCP_SERVER_PATH: /mcp/
+      NEO4J_MCP_SERVER_ALLOWED_HOSTS: "mcp-neo4j-law,mcp-neo4j-law:8000,corporate-rag-mcp-neo4j-law,corporate-rag-mcp-neo4j-law:8000,localhost,localhost:18801,127.0.0.1,127.0.0.1:18801"
+      NEO4J_NAMESPACE: cypher
+      NEO4J_READ_TIMEOUT: "60"
+      NEO4J_RESPONSE_TOKEN_LIMIT: "8000"
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    healthcheck:
+      test: python -c "import socket; socket.create_connection(('127.0.0.1', 8000), timeout=2).close()"
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - corporate-rag
+
+networks:
+  corporate-rag:
