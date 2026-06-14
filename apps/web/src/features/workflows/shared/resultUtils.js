@@ -1,5 +1,5 @@
 import { isBlank } from "./displayUtils.js";
-import { resultTables, totalRows } from "./tableUtils.js";
+import { resultTables, totalRows } from "../results/tableUtils.js";
 
 export function isSourcesColumn(column) {
   return column === "sources" || column === "source" || column === "mentions";

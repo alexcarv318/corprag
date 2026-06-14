@@ -1,4 +1,4 @@
-import { DOCUMENT_TYPE_LABELS } from "./workflowConstants.js";
+import { DOCUMENT_TYPE_LABELS } from "./documentLabels.js";
 
 export function isBlank(value) {
   return value === null || value === undefined || value === "";

@@ -1,4 +1,4 @@
-import { decodeText, displayOptionValue, formatInlineStructuredValue, isBlank, displayColumnName } from "./displayUtils.js";
+import { decodeText, displayOptionValue, formatInlineStructuredValue, isBlank, displayColumnName } from "../shared/displayUtils.js";
 import { cellKey } from "./tableUtils.js";
 
 function csvEscape(value) {

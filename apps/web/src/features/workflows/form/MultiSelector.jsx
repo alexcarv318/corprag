@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { displayOptionValue } from "./displayUtils.js";
+import { displayOptionValue } from "../shared/displayUtils.js";
 
 export default function MultiSelector({ parameter, value, onChange }) {
   const [open, setOpen] = useState(false);
@@ -24,7 +24,7 @@ export default function MultiSelector({ parameter, value, onChange }) {
               checked={selected.includes(option)}
               onChange={(event) => {
                 const next = event.target.checked ? [...selected, option] : selected.filter((item) => item !== option);
-                onChange(parameter.multiple || parameter.name === "event_type" ? next : next[0] || "");
+                onChange(parameter.multiple ? next : next[0] || "");
               }}
             />
             <span>{displayOptionValue(option)}</span>

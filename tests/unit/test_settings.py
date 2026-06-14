@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from corporate_rag.settings import AppSettings, Neo4jSettings
+from corporate_rag.settings import AppSettings, AuthSettings, DatabaseSettings, Neo4jSettings
 
 
 @pytest.fixture(autouse=True)
@@ -17,6 +17,10 @@ def clear_settings_environment(
         "CORPORATE_RAG_LOG_LEVEL",
         "CORPORATE_RAG_API_PREFIX",
         "CORPORATE_RAG_CORS_ORIGINS",
+        "CORPORATE_RAG_DATABASE_URL",
+        "CORPORATE_RAG_DATABASE_POOL_MIN_SIZE",
+        "CORPORATE_RAG_DATABASE_POOL_MAX_SIZE",
+        "CORPORATE_RAG_AUTH_SIGNUP_KEY",
         "CORPORATE_RAG_NEO4J_URI",
         "CORPORATE_RAG_NEO4J_USER",
         "CORPORATE_RAG_NEO4J_PASSWORD",
@@ -69,6 +73,44 @@ def test_neo4j_settings_defaults_match_local_development() -> None:
     assert settings.connection_acquisition_timeout_seconds == 60.0
     assert settings.connection_timeout_seconds == 30.0
     assert settings.keep_alive is True
+
+
+def test_database_settings_defaults_match_local_development() -> None:
+    settings = DatabaseSettings()
+
+    assert settings.database_url == (
+        "postgresql://corporate_rag:corporate_rag@localhost:5432/corporate_rag"
+    )
+    assert settings.database_pool_min_size == 1
+    assert settings.database_pool_max_size == 5
+
+
+def test_database_settings_accept_environment_overrides(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("CORPORATE_RAG_DATABASE_URL", "postgresql://app:secret@db/app")
+    monkeypatch.setenv("CORPORATE_RAG_DATABASE_POOL_MIN_SIZE", "2")
+    monkeypatch.setenv("CORPORATE_RAG_DATABASE_POOL_MAX_SIZE", "10")
+
+    settings = DatabaseSettings()
+
+    assert settings.database_url == "postgresql://app:secret@db/app"
+    assert settings.database_pool_min_size == 2
+    assert settings.database_pool_max_size == 10
+
+
+def test_auth_settings_default_disables_signup() -> None:
+    settings = AuthSettings()
+
+    assert settings.signup_key is None
+
+
+def test_auth_settings_accept_signup_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CORPORATE_RAG_AUTH_SIGNUP_KEY", "secret")
+
+    settings = AuthSettings()
+
+    assert settings.signup_key == "secret"
 
 
 def test_neo4j_settings_accept_explicit_values() -> None:

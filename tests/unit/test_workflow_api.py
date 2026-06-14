@@ -7,6 +7,7 @@ from corporate_rag.graph.interfaces import BaseGraphReader
 from corporate_rag.settings import AppSettings
 from corporate_rag.workflows.engine import WorkflowEngine
 from corporate_rag.workflows.models import Parameter, Workflow
+from tests.unit.auth_helpers import authenticated_client
 
 
 class FakeGraphReader(BaseGraphReader):
@@ -88,7 +89,7 @@ def build_client_with_catalog(
 ) -> TestClient:
     engine = WorkflowEngine(reader, catalog=catalog)
     app = create_app(AppSettings(environment="test"), workflow_engine=engine)
-    return TestClient(app)
+    return authenticated_client(app)
 
 
 def build_workflow() -> Workflow:
@@ -270,9 +271,19 @@ def test_workflow_run_openapi_includes_swagger_examples() -> None:
     }
 
 
+def test_workflow_openapi_requires_bearer_authorization() -> None:
+    client = TestClient(create_app(AppSettings(environment="test"), configure_workflows=False))
+
+    response = client.get("/openapi.json")
+
+    assert response.status_code == 200
+    operation = response.json()["paths"]["/api/workflows/catalog"]["get"]
+    assert operation["security"] == [{"HTTPBearer": []}]
+
+
 def test_app_factory_configures_default_workflow_catalog() -> None:
     app = create_app(AppSettings(environment="test"))
-    client = TestClient(app)
+    client = authenticated_client(app)
 
     response = client.get("/api/workflows/catalog")
 
@@ -308,9 +319,19 @@ def test_workflow_endpoint_returns_404_for_unknown_workflow() -> None:
 
 
 def test_workflow_endpoint_returns_503_without_engine() -> None:
-    client = TestClient(create_app(AppSettings(environment="test"), configure_workflows=False))
+    client = authenticated_client(
+        create_app(AppSettings(environment="test"), configure_workflows=False)
+    )
 
     response = client.get("/api/workflows/catalog")
 
     assert response.status_code == 503
     assert response.json()["detail"] == "workflow engine is not configured"
+
+
+def test_workflow_endpoints_require_authentication() -> None:
+    client = TestClient(create_app(AppSettings(environment="test"), configure_workflows=False))
+
+    response = client.get("/api/workflows/catalog")
+
+    assert response.status_code == 401

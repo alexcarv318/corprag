@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import FilterPopover from "./FilterPopover.jsx";
 import ResultCell from "./ResultCell.jsx";
 import { cellWidthStyle } from "./resultTableLayout.js";
-import { displayColumnName } from "./displayUtils.js";
+import { displayColumnName } from "../shared/displayUtils.js";
 import { copyText, csvFilename, downloadText, rowsToCsv } from "./exportUtils.js";
 import { cellKey, compareCellValues, filterValueLabel } from "./tableUtils.js";
 

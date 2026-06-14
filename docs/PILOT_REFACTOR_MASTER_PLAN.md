@@ -234,8 +234,9 @@ Recommended infrastructure stack:
 - ECS Fargate for the app container.
 - ALB with HTTPS.
 - CloudFront in front of ALB if global latency/static caching matters.
+- Amazon RDS for PostgreSQL for auth and Chainlit session persistence.
 - S3 for document upload staging, backups, deployment artifacts.
-- Secrets Manager for API keys and Neo4j credentials.
+- Secrets Manager for API keys, Neo4j credentials, database credentials, and auth secrets.
 - CloudWatch logs and alarms.
 - Neo4j deployment decision:
   - Preferred production: Neo4j Aura Professional/Enterprise if client data policy allows.
@@ -789,6 +790,13 @@ Neo4j
       - S3 backup bucket
       - scheduled dump/snapshot
 
+PostgreSQL
+  Amazon RDS for PostgreSQL
+      - private subnet
+      - auth user store
+      - Chainlit session persistence
+      - automated backups
+
 S3
   - source document staging
   - app artifacts
@@ -797,6 +805,7 @@ S3
 Secrets Manager
   - OpenAI API key
   - Neo4j credentials
+  - PostgreSQL/RDS credentials
   - workflow auth secret
   - Chainlit auth secret
 
@@ -813,6 +822,7 @@ Local Docker Compose shape:
 
 ```text
 docker-compose.yml
+  - PostgreSQL Alpine container for local auth and Chainlit session persistence
   - Neo4j Enterprise matching the deployed/pilot version line
   - APOC installed through `NEO4J_PLUGINS`
   - `/plugins` mounted for n10s/neosemantics and other compatible plugins
@@ -1005,16 +1015,17 @@ Goal: isolate auth/persistence from Chainlit and workflows.
 
 TODO:
 
-- [ ] Port current user/password storage logic from `chat/persistence.py`.
-- [ ] Move auth models to `auth/models.py`.
-- [ ] Move repository to `auth/repository.py`.
-- [ ] Implement FastAPI dependency for current user.
-- [ ] Implement admin role check.
-- [ ] Port signup route.
+- [x] Add PostgreSQL-backed `users` migration with Alembic.
+- [x] Port current user/password storage logic from `chat/persistence.py`.
+- [x] Move auth models to `auth/models.py`.
+- [x] Move repository to `auth/repository.py`.
+- [x] Implement FastAPI dependency for current user.
+- [x] Port signup route.
 - [ ] Keep Chainlit password auth callback using same repository.
-- [ ] Add tests for password auth.
-- [ ] Add tests for signup disabled/enabled.
+- [x] Add tests for password auth.
+- [x] Add tests for signup disabled/enabled.
 - [ ] Add tests for workflow API auth.
+- [ ] Revisit admin-only routes if/when roles are added; no role column in the pilot user model.
 
 Acceptance:
 
@@ -1145,9 +1156,15 @@ TODO:
   - HTTPS certificate
   - health check
   - autoscaling policy
+- [ ] Add database stack:
+  - Amazon RDS for PostgreSQL
+  - private subnet placement
+  - security group access from ECS services only
+  - automated backups
 - [ ] Add secrets stack:
   - OpenAI API key secret
   - Neo4j URI/user/password secret
+  - PostgreSQL/RDS URL or credentials secret
   - auth secrets
 - [ ] Add storage stack:
   - document bucket

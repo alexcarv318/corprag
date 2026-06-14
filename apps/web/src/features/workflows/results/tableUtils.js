@@ -1,5 +1,5 @@
-import { ALWAYS_HIDDEN_COLUMNS, EVIDENCE_DATE_COLUMNS, EVIDENCE_NUMBER_COLUMNS, EVIDENCE_TEXT_COLUMNS } from "./workflowConstants.js";
-import { decodeText, isBlank } from "./displayUtils.js";
+import { ALWAYS_HIDDEN_COLUMNS, EVIDENCE_DATE_COLUMNS, EVIDENCE_NUMBER_COLUMNS, EVIDENCE_TEXT_COLUMNS } from "../shared/evidenceColumns.js";
+import { decodeText, isBlank } from "../shared/displayUtils.js";
 
 export function resultTables(result) {
   if (Array.isArray(result?.tables) && result.tables.length) return result.tables;

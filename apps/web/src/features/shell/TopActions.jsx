@@ -1,4 +1,6 @@
-export default function TopActions({ theme, onThemeToggle, menuOpen, setMenuOpen, showCancelled, setShowCancelled, onOpenDisclaimer }) {
+export default function TopActions({ theme, onThemeToggle, menuOpen, setMenuOpen, showCancelled, setShowCancelled, onOpenDisclaimer, user, onSignOut }) {
+  const initial = (user?.username || "?").slice(0, 1).toUpperCase();
+
   return (
     <div className="top-actions" aria-label="Page actions">
       <a className="top-agent-link" href="/agent/" target="_self" rel="noopener noreferrer" title="Open the Corprag agent">
@@ -11,9 +13,13 @@ export default function TopActions({ theme, onThemeToggle, menuOpen, setMenuOpen
       </button>
       <div className="avatar-menu-wrap">
         <button id="avatar-menu-btn" className="avatar-btn" type="button" aria-label="Open account menu" aria-controls="avatar-menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}>
-          A
+          {initial}
         </button>
         <div id="avatar-menu" className="avatar-menu" hidden={!menuOpen}>
+          <div className="menu-section account-summary">
+            <span className="account-label">Signed in</span>
+            <strong>{user?.username}</strong>
+          </div>
           <div className="menu-section">
             <label className="menu-switch" title="Also show items that are no longer in force across every workflow.">
               <span>Show inactive</span>
@@ -28,8 +34,8 @@ export default function TopActions({ theme, onThemeToggle, menuOpen, setMenuOpen
             <button id="disclaimer-open-btn" className="menu-item" type="button" onClick={onOpenDisclaimer}>
               About this console
             </button>
-            <button id="logout-btn" className="menu-item" type="button" title="Sign out of workflows">
-              Logout
+            <button id="logout-btn" className="menu-item" type="button" title="Sign out of workflows" onClick={onSignOut}>
+              Sign out
             </button>
           </div>
         </div>

@@ -7,14 +7,36 @@ export class ApiError extends Error {
   }
 }
 
+const AUTH_SESSION_KEY = "corporate-rag.auth";
+
+export function getAuthSession() {
+  try {
+    const raw = window.sessionStorage.getItem(AUTH_SESSION_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setAuthSession({ user, accessToken }) {
+  window.sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify({ user, accessToken }));
+}
+
+export function clearAuthSession() {
+  window.sessionStorage.removeItem(AUTH_SESSION_KEY);
+}
+
 export async function apiFetch(path, options = {}) {
+  const session = getAuthSession();
+  const authHeaders = session?.accessToken ? { Authorization: `Bearer ${session.accessToken}` } : {};
   const response = await fetch(path, {
+    ...options,
     headers: {
       Accept: "application/json",
       ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...authHeaders,
       ...options.headers
-    },
-    ...options
+    }
   });
 
   const contentType = response.headers.get("content-type") || "";
@@ -22,6 +44,9 @@ export async function apiFetch(path, options = {}) {
 
   if (!response.ok) {
     const detail = payload?.detail || response.statusText;
+    if (response.status === 401 && !options.suppressAuthExpired) {
+      window.dispatchEvent(new CustomEvent("corporate-rag:auth-expired"));
+    }
     throw new ApiError(detail, { status: response.status, detail });
   }
 

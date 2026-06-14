@@ -34,8 +34,40 @@ class AppSettings(BaseSettings):
     cors_origins: tuple[str, ...] = Field(default=())
 
 
+class DatabaseSettings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_prefix="CORPORATE_RAG_",
+        extra="ignore",
+    )
+
+    database_url: str = "postgresql://corporate_rag:corporate_rag@localhost:5432/corporate_rag"
+    database_pool_min_size: int = 1
+    database_pool_max_size: int = 5
+
+
+class AuthSettings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_prefix="CORPORATE_RAG_AUTH_",
+        extra="ignore",
+    )
+
+    signup_key: str | None = None
+    secret_key: str = "local-dev-secret-change-me"
+    access_token_ttl_seconds: int = 60 * 60 * 12
+
+
 def load_app_settings() -> AppSettings:
     return AppSettings()
+
+
+def load_auth_settings() -> AuthSettings:
+    return AuthSettings()
+
+
+def load_database_settings() -> DatabaseSettings:
+    return DatabaseSettings()
 
 
 def load_neo4j_settings() -> Neo4jSettings:

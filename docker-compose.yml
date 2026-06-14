@@ -1,4 +1,25 @@
 services:
+  postgres:
+    image: postgres:${POSTGRES_VERSION:-18-alpine}
+    container_name: corporate-rag-postgres
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-corporate_rag}
+      POSTGRES_USER: ${POSTGRES_USER:-corporate_rag}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - ${POSTGRES_HOME:?set POSTGRES_HOME in .env}:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - corporate-rag
+
   neo4j:
     image: neo4j:${NEO4J_VERSION:-2026.04.0}-enterprise
     container_name: corporate-rag-neo4j
@@ -40,9 +61,16 @@ services:
       CORPORATE_RAG_NEO4J_PASSWORD: ${NEO4J_PASSWORD}
       CORPORATE_RAG_NEO4J_CORPORATE_DATABASE: neo4j
       CORPORATE_RAG_NEO4J_LAW_DATABASE: law
+      CORPORATE_RAG_DATABASE_URL: postgresql://${POSTGRES_USER:-corporate_rag}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-corporate_rag}
+      CORPORATE_RAG_AUTH_SIGNUP_KEY: ${CORPORATE_RAG_AUTH_SIGNUP_KEY:-}
+      CORPORATE_RAG_AUTH_SECRET_KEY: ${CORPORATE_RAG_AUTH_SECRET_KEY:?set CORPORATE_RAG_AUTH_SECRET_KEY in .env}
+      CORPORATE_RAG_AUTH_ACCESS_TOKEN_TTL_SECONDS: ${CORPORATE_RAG_AUTH_ACCESS_TOKEN_TTL_SECONDS:-43200}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-corporate_rag}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-corporate_rag}
     ports:
       - "${CORPORATE_RAG_APP_PORT:-8088}:8088"
     depends_on:
+      postgres:
+        condition: service_healthy
       neo4j:
         condition: service_healthy
     networks:

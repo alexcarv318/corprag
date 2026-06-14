@@ -1,7 +1,7 @@
-import { StructuredValue } from "./WorkflowDisplay.jsx";
-import { decodeText, displayOptionValue, isBlank } from "./displayUtils.js";
+import { StructuredValue } from "../shared/StructuredValue.jsx";
+import { decodeText, displayOptionValue, isBlank } from "../shared/displayUtils.js";
 import { evidenceColumnKind } from "./tableUtils.js";
-import { evidenceEntityId, isSourcesColumn, rowContext, sourceFiles } from "./resultUtils.js";
+import { evidenceEntityId, isSourcesColumn, rowContext, sourceFiles } from "../shared/resultUtils.js";
 import { cellWidthStyle } from "./resultTableLayout.js";
 
 export default function ResultCell({ column, value, row, columns, columnWidth, onSources, onEvidence }) {

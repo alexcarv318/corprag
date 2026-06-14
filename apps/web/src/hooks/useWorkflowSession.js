@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 
 import { getCatalog, getDisclaimer, getWorkflow, runWorkflow } from "../api/workflows.js";
-import { collectRunParameters, initialParameters } from "../features/workflows/parameterUtils.js";
-import { summarizeResult } from "../features/workflows/resultUtils.js";
+import { collectRunParameters, initialParameters } from "../features/workflows/form/parameterUtils.js";
+import { summarizeResult } from "../features/workflows/shared/resultUtils.js";
 import { workflowFromUrl, syncWorkflowToUrl } from "../utils/queryString.js";
 
 export function useWorkflowSession({ showCancelled, setShowCancelled }) {

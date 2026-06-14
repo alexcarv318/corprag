@@ -1,5 +1,5 @@
 import DocumentView from "./DocumentView.jsx";
-import { WORKFLOW_ICONS } from "../workflows/workflowConstants.js";
+import { WORKFLOW_ICONS } from "../workflows/shared/icons.js";
 
 export default function DocumentSourceDrawer({ drawer, onClose, onBack, onOpenDocument }) {
   const open = Boolean(drawer);

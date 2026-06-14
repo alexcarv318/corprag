@@ -1,7 +1,12 @@
-from fastapi import FastAPI
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from corporate_rag.app.dependencies import current_user
 from corporate_rag.app.health import router as health_router
+from corporate_rag.auth.router import router as auth_router
 from corporate_rag.documents.router import router as documents_router
 from corporate_rag.evidence.router import router as evidence_router
 from corporate_rag.facets.router import router as facets_router
@@ -17,6 +22,10 @@ OPENAPI_TAGS = [
     {
         "name": "health",
         "description": "Service liveness and basic runtime metadata.",
+    },
+    {
+        "name": "auth",
+        "description": "Password user sign-up, sign-in, and bearer token identity checks.",
     },
     {
         "name": "workflows",
@@ -57,6 +66,15 @@ def create_app(
     elif resolved_workflow_engine is not None and resolved_graph_reader is None:
         resolved_graph_reader = resolved_workflow_engine.client
 
+    @asynccontextmanager
+    async def lifespan(application: FastAPI) -> AsyncIterator[None]:
+        try:
+            yield
+        finally:
+            pool = getattr(application.state, "database_pool", None)
+            if pool is not None:
+                pool.close()
+
     app = FastAPI(
         title=resolved_settings.app_name,
         summary="Corporate graph workflow and document source API.",
@@ -67,6 +85,7 @@ def create_app(
         ),
         version="0.1.0",
         openapi_tags=OPENAPI_TAGS,
+        lifespan=lifespan,
     )
     app.state.settings = resolved_settings
     app.state.workflow_engine = resolved_workflow_engine
@@ -81,11 +100,33 @@ def create_app(
             allow_headers=["Authorization", "Content-Type"],
         )
 
-    app.include_router(health_router)
-    app.include_router(typeahead_router, prefix=resolved_settings.api_prefix)
-    app.include_router(facets_router, prefix=resolved_settings.api_prefix)
-    app.include_router(evidence_router, prefix=resolved_settings.api_prefix)
-    app.include_router(workflows_router, prefix=resolved_settings.api_prefix)
-    app.include_router(documents_router, prefix=resolved_settings.api_prefix)
+    app.include_router(auth_router, prefix=resolved_settings.api_prefix)
+    protected_dependencies = [Depends(current_user)]
+    app.include_router(health_router, dependencies=protected_dependencies)
+    app.include_router(
+        typeahead_router,
+        prefix=resolved_settings.api_prefix,
+        dependencies=protected_dependencies,
+    )
+    app.include_router(
+        facets_router,
+        prefix=resolved_settings.api_prefix,
+        dependencies=protected_dependencies,
+    )
+    app.include_router(
+        evidence_router,
+        prefix=resolved_settings.api_prefix,
+        dependencies=protected_dependencies,
+    )
+    app.include_router(
+        workflows_router,
+        prefix=resolved_settings.api_prefix,
+        dependencies=protected_dependencies,
+    )
+    app.include_router(
+        documents_router,
+        prefix=resolved_settings.api_prefix,
+        dependencies=protected_dependencies,
+    )
 
     return app

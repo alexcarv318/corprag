@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 from corporate_rag.app.main import create_app
 from corporate_rag.graph.interfaces import BaseGraphReader
 from corporate_rag.settings import AppSettings
+from tests.unit.auth_helpers import authenticated_client
 
 
 class DocumentGraphReader(BaseGraphReader):
@@ -65,7 +66,7 @@ def build_client(reader: BaseGraphReader) -> TestClient:
         graph_reader=reader,
         configure_workflows=False,
     )
-    return TestClient(app)
+    return authenticated_client(app)
 
 
 def test_document_source_endpoint_returns_chunks() -> None:
@@ -95,3 +96,16 @@ def test_document_titles_endpoint_returns_metadata_by_requested_file() -> None:
 
     assert response.status_code == 200
     assert response.json()["titles"]["registry.pdf"]["title"] == "Registry Extract"
+
+
+def test_document_endpoints_require_authentication() -> None:
+    app = create_app(
+        AppSettings(environment="test"),
+        graph_reader=DocumentGraphReader(),
+        configure_workflows=False,
+    )
+    client = TestClient(app)
+
+    response = client.get("/api/documents/source", params={"file": "registry.pdf"})
+
+    assert response.status_code == 401

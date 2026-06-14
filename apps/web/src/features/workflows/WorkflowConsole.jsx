@@ -8,11 +8,11 @@ import TopActions from "../shell/TopActions.jsx";
 import { useAppPreferences } from "../../hooks/useAppPreferences.js";
 import { useSourceDrawer } from "../../hooks/useSourceDrawer.js";
 import { useWorkflowSession } from "../../hooks/useWorkflowSession.js";
-import WorkflowForm from "./WorkflowForm.jsx";
+import WorkflowForm from "./form/WorkflowForm.jsx";
 import WorkflowHeader from "./WorkflowHeader.jsx";
-import WorkflowResults from "./WorkflowResults.jsx";
+import WorkflowResults from "./results/WorkflowResults.jsx";
 
-export default function WorkflowConsole() {
+export default function WorkflowConsole({ user, onSignOut }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [disclaimerOpen, setDisclaimerOpen] = useState(false);
   const { theme, setTheme, collapsed, setCollapsed, showCancelled, setShowCancelled } = useAppPreferences();
@@ -58,6 +58,8 @@ export default function WorkflowConsole() {
             setDisclaimerOpen(true);
           }}
           onThemeToggle={() => setTheme(theme === "dark" ? "light" : "dark")}
+          user={user}
+          onSignOut={onSignOut}
         />
         <div id="content">
           {showsDataModelGuide ? <DataModelGuide workflow={workflow} /> : <WorkflowHeader workflow={workflow} />}
@@ -66,7 +68,6 @@ export default function WorkflowConsole() {
               labels={parameterLabels}
               parameters={parameters}
               running={running}
-              showCancelled={showCancelled}
               status={runStatus}
               workflow={workflow}
               setParameter={setParameter}
