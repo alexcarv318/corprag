@@ -2,10 +2,12 @@ import json
 from typing import Any
 
 import chainlit as cl
+from chainlit.data.sql_alchemy import SQLAlchemyDataLayer
 from chainlit.types import ThreadDict
 from langchain_core.runnables import RunnableConfig
 
 from corporate_rag.agents.catalog import AgentModeId, starters_for_mode
+from corporate_rag.agents.data_layer import ProductUserSQLAlchemyDataLayer
 from corporate_rag.agents.handoff import (
     InvalidHandoffTokenError,
     handoff_token_from_cookie,
@@ -25,7 +27,23 @@ from corporate_rag.agents.tool_output import (
     reset_tool_event_observer,
     set_tool_event_observer,
 )
-from corporate_rag.settings import load_agent_settings, load_auth_settings
+from corporate_rag.settings import (
+    load_agent_settings,
+    load_auth_settings,
+    load_database_settings,
+)
+
+
+def _chainlit_conninfo() -> str:
+    database_url = load_database_settings().database_url
+    if database_url.startswith("postgresql://"):
+        return database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    return database_url
+
+
+@cl.data_layer
+def get_data_layer() -> SQLAlchemyDataLayer:
+    return ProductUserSQLAlchemyDataLayer(conninfo=_chainlit_conninfo())
 
 
 @cl.header_auth_callback
@@ -150,10 +168,11 @@ async def _finalize_message(
 
 
 async def _send_tool_event(event: ToolCallEvent) -> None:
-    await cl.Message(
-        content=_format_tool_event(event),
-        author=f"Tool · {event.tool_name}",
-    ).send()  # type: ignore[no-untyped-call]
+    step = cl.Step(name=event.tool_name, type="tool", show_input="json")
+    step.input = event.arguments
+    step.output = _format_tool_event(event)
+    step.is_error = event.phase == "error"
+    await step.send()  # type: ignore[no-untyped-call]
 
 
 def _format_tool_event(event: ToolCallEvent) -> str:

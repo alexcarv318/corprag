@@ -8,6 +8,7 @@ wheels/
 .coverage
 htmlcov/
 node_modules/
+.chainlit/
 
 # Virtual environments
 .venv

@@ -11,6 +11,20 @@ INTERNAL_STARTERS = [
     ("Current board", "Who is on the board of Acer European Holdings today?"),
     ("Capital contribution", "Find documents about capital contributions in 2022."),
     ("Corpus overview", "What business subjects does this corpus cover?"),
+    (
+        "Key resolutions",
+        "What shareholder or board resolutions are mentioned for Acer European Holdings?",
+    ),
+    (
+        "Executive timeline",
+        "Who served as director of Acer European Holdings over time, "
+        "and what evidence supports it?",
+    ),
+    (
+        "Transaction history",
+        "Give me the history of any transaction between Acer European Holdings "
+        "and Acer Sales International SA.",
+    ),
 ]
 
 LAW_STARTERS = [
@@ -28,6 +42,21 @@ LAW_STARTERS = [
         "Commercial register",
         "What information about directors, signatories, and representation "
         "powers must be filed in the Swiss commercial register?",
+    ),
+    (
+        "Merger Act structures",
+        "Under the Swiss Merger Act, what is the difference between a merger, "
+        "a demerger, a conversion, and a transfer of assets?",
+    ),
+    (
+        "Director liability",
+        "When can corporate directors incur liability under the Swiss Code of "
+        "Obligations for breach of duty, and who can bring the claim?",
+    ),
+    (
+        "Foreign company law",
+        "Under the Swiss Federal Act on Private International Law, which law "
+        "governs a company incorporated abroad but operating in Switzerland?",
     ),
 ]
 

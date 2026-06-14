@@ -22,6 +22,7 @@ from corporate_rag.settings import (
     load_agent_settings,
     load_app_settings,
     load_auth_settings,
+    load_database_settings,
     load_neo4j_settings,
 )
 from corporate_rag.typeahead.router import router as typeahead_router
@@ -107,6 +108,7 @@ def create_app(
     app.state.graph_reader = resolved_graph_reader
     app.state.agent_settings = load_agent_settings()
     app.state.auth_settings = load_auth_settings()
+    app.state.database_settings = load_database_settings()
 
     if resolved_settings.cors_origins:
         app.add_middleware(
@@ -161,8 +163,8 @@ def _mount_chainlit_runtime(app: FastAPI) -> None:
     auth_config = load_auth_settings()
     chainlit_secret = hashlib.sha256(auth_config.secret_key.encode("utf-8")).hexdigest()
     os.environ.setdefault("CHAINLIT_AUTH_SECRET", chainlit_secret)
-    # Chainlit auto-enables its own data layer when DATABASE_URL is present.
-    # This adapter is stateless; product persistence uses CORPORATE_RAG_DATABASE_URL.
+    # Chainlit persistence is configured explicitly in agents/chainlit_app.py
+    # against CORPORATE_RAG_DATABASE_URL.
     os.environ.pop("DATABASE_URL", None)
     target = Path(__file__).resolve().parents[1] / "agents" / "chainlit_app.py"
     mount_chainlit(app=app, target=str(target), path=agent_config.chainlit_mount_path)
