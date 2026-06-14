@@ -1,5 +1,6 @@
 import { StructuredValue } from "./WorkflowDisplay.jsx";
-import { decodeText, displayOptionValue, evidenceColumnKind, isBlank } from "./workflowUtils.js";
+import { decodeText, displayOptionValue, isBlank } from "./displayUtils.js";
+import { evidenceColumnKind } from "./tableUtils.js";
 import { evidenceEntityId, isSourcesColumn, rowContext, sourceFiles } from "./resultUtils.js";
 import { cellWidthStyle } from "./resultTableLayout.js";
 

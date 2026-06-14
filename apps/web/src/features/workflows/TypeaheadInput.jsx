@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { getTypeahead } from "../../api/workflows.js";
 import { TYPEAHEAD_LIMITS } from "./workflowConstants.js";
-import { typeaheadKind } from "./workflowUtils.js";
+import { typeaheadKind } from "./parameterUtils.js";
 
 export default function TypeaheadInput({ parameter, value, label, subjectId, onChange }) {
   const kind = typeaheadKind(parameter);

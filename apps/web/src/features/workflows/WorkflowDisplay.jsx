@@ -1,4 +1,4 @@
-import { decodeText, displayFieldName, formatInlineStructuredValue, highlightParts, isBlank } from "./workflowUtils.js";
+import { decodeText, displayFieldName, formatInlineStructuredValue, highlightParts, isBlank } from "./displayUtils.js";
 
 export function HighlightedText({ text, terms }) {
   return (

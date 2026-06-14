@@ -1,6 +1,6 @@
 import MultiSelector from "./MultiSelector.jsx";
 import TypeaheadInput from "./TypeaheadInput.jsx";
-import { typeaheadKind } from "./workflowUtils.js";
+import { typeaheadKind } from "./parameterUtils.js";
 
 export default function WorkflowForm({ workflow, parameters, labels, showCancelled, setParameter, onRun, running, status }) {
   if (!workflow) return null;

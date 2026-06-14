@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 
 import { HighlightedText } from "../workflows/WorkflowDisplay.jsx";
-import { displayOptionValue, highlightParts } from "../workflows/workflowUtils.js";
+import { displayOptionValue, highlightParts } from "../workflows/displayUtils.js";
 
 export default function DocumentView({ payload, highlightChunkIds, highlightTerms }) {
   const chunks = payload.chunks || [];

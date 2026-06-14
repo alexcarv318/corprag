@@ -1,4 +1,5 @@
-import { isBlank, resultTables, totalRows } from "./workflowUtils.js";
+import { isBlank } from "./displayUtils.js";
+import { resultTables, totalRows } from "./tableUtils.js";
 
 export function isSourcesColumn(column) {
   return column === "sources" || column === "source" || column === "mentions";

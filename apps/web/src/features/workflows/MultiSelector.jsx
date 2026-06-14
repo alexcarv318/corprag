@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { displayOptionValue } from "./workflowUtils.js";
+import { displayOptionValue } from "./displayUtils.js";
 
 export default function MultiSelector({ parameter, value, onChange }) {
   const [open, setOpen] = useState(false);

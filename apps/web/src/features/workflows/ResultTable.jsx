@@ -3,7 +3,9 @@ import { useMemo, useState } from "react";
 import FilterPopover from "./FilterPopover.jsx";
 import ResultCell from "./ResultCell.jsx";
 import { cellWidthStyle } from "./resultTableLayout.js";
-import { cellKey, compareCellValues, copyText, csvFilename, displayColumnName, downloadText, filterValueLabel, rowsToCsv } from "./workflowUtils.js";
+import { displayColumnName } from "./displayUtils.js";
+import { copyText, csvFilename, downloadText, rowsToCsv } from "./exportUtils.js";
+import { cellKey, compareCellValues, filterValueLabel } from "./tableUtils.js";
 
 function filterOptionsForColumn(rows, filters, column) {
   const otherFilterKeys = Object.keys(filters).filter((key) => key !== column);

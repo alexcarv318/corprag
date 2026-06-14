@@ -1,5 +1,5 @@
 import ResultTable from "./ResultTable.jsx";
-import { resultTables, totalRows, visibleColumns } from "./workflowUtils.js";
+import { resultTables, totalRows, visibleColumns } from "./tableUtils.js";
 
 export default function WorkflowResults({ result, onSources, onEvidence }) {
   if (!result) return null;

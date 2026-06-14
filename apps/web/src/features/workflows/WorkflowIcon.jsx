@@ -1,5 +1,5 @@
 import { WORKFLOW_ICONS } from "./workflowConstants.js";
-import { workflowIconKey } from "./workflowUtils.js";
+import { workflowIconKey } from "./parameterUtils.js";
 
 export function WorkflowIcon({ workflow }) {
   return (
