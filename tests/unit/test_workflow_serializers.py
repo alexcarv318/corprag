@@ -5,7 +5,7 @@ from corporate_rag.workflows.serializers import (
 )
 
 
-def test_workflow_public_payload_excludes_cypher() -> None:
+def test_workflow_public_payload_includes_cypher() -> None:
     workflow = Workflow(
         workflow_id="find.subject",
         title="Find subject",
@@ -20,10 +20,10 @@ def test_workflow_public_payload_excludes_cypher() -> None:
 
     assert payload["workflow_id"] == "find.subject"
     assert payload["parameters"][0]["name"] == "subject_id"
-    assert "cypher" not in payload
+    assert payload["cypher"] == "MATCH (n) RETURN n"
 
 
-def test_workflow_result_public_payload_excludes_cypher() -> None:
+def test_workflow_result_public_payload_includes_cypher() -> None:
     result = WorkflowResult(
         workflow_id="find.subject",
         parameters={"subject_id": "subject-aeh"},
@@ -38,4 +38,4 @@ def test_workflow_result_public_payload_excludes_cypher() -> None:
 
     assert payload["workflow_id"] == "find.subject"
     assert payload["rows"] == [{"subject_id": "subject-aeh"}]
-    assert "cypher" not in payload
+    assert payload["cypher"] == "MATCH (n) RETURN n"

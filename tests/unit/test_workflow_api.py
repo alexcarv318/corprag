@@ -22,6 +22,90 @@ class FakeGraphReader(BaseGraphReader):
         return [{"subject_id": parameters["subject_id"], "label": "AEH"}] if parameters else []
 
 
+class TypeaheadGraphReader(BaseGraphReader):
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, dict[str, Any]]] = []
+
+    def read(
+        self,
+        cypher: str,
+        parameters: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
+        resolved_parameters = parameters or {}
+        self.calls.append((cypher, resolved_parameters))
+        return [
+            {
+                "id": "subject-aeh",
+                "label": "Acer European Holdings",
+                "hint": "family root",
+                "edge_count": 5,
+                "score": 1.5,
+            }
+        ]
+
+
+class FacetGraphReader(BaseGraphReader):
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, dict[str, Any]]] = []
+
+    def read(
+        self,
+        cypher: str,
+        parameters: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
+        resolved_parameters = parameters or {}
+        self.calls.append((cypher, resolved_parameters))
+        return [{"value": "registry_extract", "count": 2}]
+
+
+class EvidenceGraphReader(BaseGraphReader):
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, dict[str, Any]]] = []
+
+    def read(
+        self,
+        cypher: str,
+        parameters: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
+        resolved_parameters = parameters or {}
+        self.calls.append((cypher, resolved_parameters))
+        return [
+            {
+                "file": "registry.pdf",
+                "chunk_id": "chunk-1",
+                "text": "The capital amount is 1,000,000 shares.",
+            }
+        ]
+
+
+def build_client(reader: FakeGraphReader) -> TestClient:
+    return build_client_with_catalog(reader, (build_workflow(),))
+
+
+def build_client_with_catalog(
+    reader: BaseGraphReader,
+    catalog: tuple[Workflow, ...],
+) -> TestClient:
+    engine = WorkflowEngine(reader, catalog=catalog)
+    app = create_app(AppSettings(environment="test"), workflow_engine=engine)
+    return TestClient(app)
+
+
+def build_workflow() -> Workflow:
+    return Workflow(
+        workflow_id="find.subject",
+        title="Find subject",
+        category="General",
+        description="Find one subject.",
+        cypher="RETURN $subject_id AS subject_id",
+        parameters=(
+            Parameter(name="subject_id", label="Subject", required=True),
+            Parameter(name="limit", label="Limit", kind="number", default=10),
+        ),
+        output_columns=("subject_id", "label"),
+    )
+
+
 def test_workflow_catalog_endpoint_returns_categories_and_workflows() -> None:
     reader = FakeGraphReader()
     client = build_client(reader)
@@ -31,7 +115,7 @@ def test_workflow_catalog_endpoint_returns_categories_and_workflows() -> None:
     assert response.status_code == 200
     assert response.json()["categories"] == ["General"]
     assert response.json()["workflows"][0]["workflow_id"] == "find.subject"
-    assert "cypher" not in response.json()["workflows"][0]
+    assert response.json()["workflows"][0]["cypher"] == "RETURN $subject_id AS subject_id"
 
 
 def test_workflow_disclaimer_returns_document_count() -> None:
@@ -131,7 +215,7 @@ def test_workflow_definition_endpoint_returns_one_workflow() -> None:
     assert response.status_code == 200
     assert response.json()["workflow_id"] == "find.subject"
     assert response.json()["parameters"][0]["name"] == "subject_id"
-    assert "cypher" not in response.json()
+    assert response.json()["cypher"] == "RETURN $subject_id AS subject_id"
 
 
 def test_workflow_run_endpoint_executes_workflow() -> None:
@@ -155,7 +239,7 @@ def test_workflow_run_endpoint_executes_workflow() -> None:
         "subject_identifiers",
         "subject_board_history",
     ]
-    assert "cypher" not in response.json()
+    assert response.json()["cypher"] == "RETURN $subject_id AS subject_id"
 
 
 def test_workflow_run_openapi_includes_swagger_examples() -> None:
@@ -198,7 +282,7 @@ def test_app_factory_configures_default_workflow_catalog() -> None:
     assert "documents.search" in workflow_ids
 
 
-def test_workflow_run_endpoint_returns_400_for_bad_parameters() -> None:
+def test_workflow_run_endpoint_ignores_unknown_parameters() -> None:
     reader = FakeGraphReader()
     client = build_client(reader)
 
@@ -207,8 +291,11 @@ def test_workflow_run_endpoint_returns_400_for_bad_parameters() -> None:
         json={"parameters": {"subject_id": "subject-aeh", "unknown": "value"}},
     )
 
-    assert response.status_code == 400
-    assert "Unknown parameter" in response.json()["detail"]
+    assert response.status_code == 200
+    assert reader.calls[0] == (
+        "RETURN $subject_id AS subject_id",
+        {"subject_id": "subject-aeh", "limit": 10},
+    )
 
 
 def test_workflow_endpoint_returns_404_for_unknown_workflow() -> None:
@@ -227,87 +314,3 @@ def test_workflow_endpoint_returns_503_without_engine() -> None:
 
     assert response.status_code == 503
     assert response.json()["detail"] == "workflow engine is not configured"
-
-
-def build_client(reader: FakeGraphReader) -> TestClient:
-    return build_client_with_catalog(reader, (build_workflow(),))
-
-
-def build_client_with_catalog(
-    reader: BaseGraphReader,
-    catalog: tuple[Workflow, ...],
-) -> TestClient:
-    engine = WorkflowEngine(reader, catalog=catalog)
-    app = create_app(AppSettings(environment="test"), workflow_engine=engine)
-    return TestClient(app)
-
-
-def build_workflow() -> Workflow:
-    return Workflow(
-        workflow_id="find.subject",
-        title="Find subject",
-        category="General",
-        description="Find one subject.",
-        cypher="RETURN $subject_id AS subject_id",
-        parameters=(
-            Parameter(name="subject_id", label="Subject", required=True),
-            Parameter(name="limit", label="Limit", kind="number", default=10),
-        ),
-        output_columns=("subject_id", "label"),
-    )
-
-
-class TypeaheadGraphReader(BaseGraphReader):
-    def __init__(self) -> None:
-        self.calls: list[tuple[str, dict[str, Any]]] = []
-
-    def read(
-        self,
-        cypher: str,
-        parameters: dict[str, Any] | None = None,
-    ) -> list[dict[str, Any]]:
-        resolved_parameters = parameters or {}
-        self.calls.append((cypher, resolved_parameters))
-        return [
-            {
-                "id": "subject-aeh",
-                "label": "Acer European Holdings",
-                "hint": "family root",
-                "edge_count": 5,
-                "score": 1.5,
-            }
-        ]
-
-
-class FacetGraphReader(BaseGraphReader):
-    def __init__(self) -> None:
-        self.calls: list[tuple[str, dict[str, Any]]] = []
-
-    def read(
-        self,
-        cypher: str,
-        parameters: dict[str, Any] | None = None,
-    ) -> list[dict[str, Any]]:
-        resolved_parameters = parameters or {}
-        self.calls.append((cypher, resolved_parameters))
-        return [{"value": "registry_extract", "count": 2}]
-
-
-class EvidenceGraphReader(BaseGraphReader):
-    def __init__(self) -> None:
-        self.calls: list[tuple[str, dict[str, Any]]] = []
-
-    def read(
-        self,
-        cypher: str,
-        parameters: dict[str, Any] | None = None,
-    ) -> list[dict[str, Any]]:
-        resolved_parameters = parameters or {}
-        self.calls.append((cypher, resolved_parameters))
-        return [
-            {
-                "file": "registry.pdf",
-                "chunk_id": "chunk-1",
-                "text": "The capital amount is 1,000,000 shares.",
-            }
-        ]

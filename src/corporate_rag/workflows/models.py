@@ -150,6 +150,7 @@ class WorkflowResponse(BaseModel):
     title: str
     category: str
     description: str
+    cypher: str
     parameters: list[WorkflowParameterResponse]
     output_columns: list[str]
     notes: str | None = None
@@ -177,6 +178,7 @@ class WorkflowResultResponse(BaseModel):
     columns: list[str]
     row_count: int
     elapsed_ms: float
+    cypher: str
     tables: list[WorkflowResultTableResponse]
 
 

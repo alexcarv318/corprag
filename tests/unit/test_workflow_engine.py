@@ -4,6 +4,7 @@ from typing import Any
 import pytest
 
 from corporate_rag.graph.interfaces import BaseGraphReader
+from corporate_rag.workflows import repository
 from corporate_rag.workflows.engine import (
     WorkflowEngine,
     coerce_workflow_value,
@@ -40,6 +41,57 @@ class FakeGraphReader(BaseGraphReader):
     ) -> list[dict[str, Any]]:
         self.calls.append((cypher, parameters))
         return self.rows
+
+
+def build_test_workflow() -> Workflow:
+    return Workflow(
+        workflow_id="test.workflow",
+        title="Test workflow",
+        category="Test",
+        description="A workflow for engine tests.",
+        cypher="RETURN $subject_id AS subject_id",
+        parameters=(
+            Parameter(name="subject_id", label="Subject", required=True),
+            Parameter(name="limit", label="Limit", kind="number", default=10),
+            Parameter(
+                name="include_cancelled",
+                label="Include cancelled",
+                kind="boolean",
+                default=False,
+            ),
+            Parameter(name="doc_types", label="Document types", kind="select", multiple=True),
+        ),
+        output_columns=("name", "effective_date", "count"),
+    )
+
+
+def build_organization_workflow() -> Workflow:
+    return Workflow(
+        workflow_id="find.organization",
+        title="Find organization",
+        category="General",
+        description="Find an organization.",
+        cypher="organization cypher",
+        parameters=(Parameter(name="organization_id", label="Organization"),),
+        output_columns=("organization_id", "label"),
+    )
+
+
+def build_capital_workflow() -> Workflow:
+    return Workflow(
+        workflow_id="capital.shareholdings",
+        title="Capital",
+        category="General",
+        description="Capital and shareholding events.",
+        cypher="catalog capital cypher",
+        parameters=(
+            Parameter(name="subject_id", label="Subject", default=""),
+            Parameter(name="organization_id", label="Organization", default=""),
+            Parameter(name="as_of", label="As of", kind="date", default=""),
+            Parameter(name="limit", label="Limit", kind="number", default=50),
+        ),
+        output_columns=("subject", "effective_date", "event"),
+    )
 
 
 def test_engine_lists_and_resolves_workflows() -> None:
@@ -96,11 +148,88 @@ def test_engine_runs_workflow_with_coerced_parameters_and_normalized_rows() -> N
     assert result.row_count == 2
 
 
-def test_engine_rejects_unknown_parameters() -> None:
+def test_engine_normalizes_source_collection_file_and_chunk_lists() -> None:
+    workflow = Workflow(
+        workflow_id="test.sources",
+        title="Source workflow",
+        category="Test",
+        description="A workflow with source lists.",
+        cypher="RETURN [] AS sources",
+        parameters=(),
+        output_columns=("sources",),
+    )
+    reader = FakeGraphReader(
+        rows=[
+            {
+                "sources": [
+                    {
+                        "file": ["registry.pdf", "minutes.pdf"],
+                        "chunk_id": ["chunk-1", ""],
+                        "authority_status": "primary_authority",
+                    }
+                ]
+            }
+        ]
+    )
+    engine = WorkflowEngine(reader, catalog=(workflow,))
+
+    result = engine.run("test.sources")
+
+    assert result.rows == [
+        {
+            "sources": [
+                {
+                    "file": "registry.pdf",
+                    "chunk_id": "chunk-1",
+                    "authority_status": "primary_authority",
+                },
+                {
+                    "file": "minutes.pdf",
+                    "chunk_id": None,
+                    "authority_status": "primary_authority",
+                },
+            ]
+        }
+    ]
+
+
+def test_engine_removes_cancelled_column_when_inactive_rows_are_hidden() -> None:
+    workflow = Workflow(
+        workflow_id="test.cancelled",
+        title="Cancelled workflow",
+        category="Test",
+        description="A workflow with a cancelled marker.",
+        cypher="RETURN false AS cancelled",
+        parameters=(
+            Parameter(
+                name="include_cancelled",
+                label="Include cancelled",
+                kind="boolean",
+                default=False,
+            ),
+        ),
+        output_columns=("name", "cancelled"),
+    )
+    reader = FakeGraphReader(rows=[{"name": "Active", "cancelled": False}])
+    engine = WorkflowEngine(reader, catalog=(workflow,))
+
+    result = engine.run("test.cancelled")
+
+    assert result.columns == ["name"]
+    assert result.rows == [{"name": "Active"}]
+
+
+def test_engine_ignores_unknown_parameters() -> None:
     engine = WorkflowEngine(FakeGraphReader([]), catalog=(build_test_workflow(),))
 
-    with pytest.raises(ValueError, match="Unknown parameter"):
-        engine.run("test.workflow", {"unknown": "value"})
+    result = engine.run("test.workflow", {"subject_id": "subject-aeh", "unknown": "value"})
+
+    assert result.parameters == {
+        "subject_id": "subject-aeh",
+        "limit": 10,
+        "include_cancelled": False,
+        "doc_types": [],
+    }
 
 
 def test_engine_rejects_missing_required_parameter() -> None:
@@ -114,7 +243,10 @@ def test_engine_rejects_missing_required_parameter() -> None:
     )
     engine = WorkflowEngine(FakeGraphReader([]), catalog=(workflow,))
 
-    with pytest.raises(ValueError, match="Missing required parameter"):
+    with pytest.raises(
+        ValueError,
+        match="Workflow 'required.workflow' requires parameter 'subject_id'.",
+    ):
         engine.run("required.workflow")
 
 
@@ -149,28 +281,6 @@ def test_coerce_workflow_value_rejects_invalid_number() -> None:
 
     with pytest.raises(ValueError, match="expected a number"):
         coerce_workflow_value(parameter, "many")
-
-
-def build_test_workflow() -> Workflow:
-    return Workflow(
-        workflow_id="test.workflow",
-        title="Test workflow",
-        category="Test",
-        description="A workflow for engine tests.",
-        cypher="RETURN $subject_id AS subject_id",
-        parameters=(
-            Parameter(name="subject_id", label="Subject", required=True),
-            Parameter(name="limit", label="Limit", kind="number", default=10),
-            Parameter(
-                name="include_cancelled",
-                label="Include cancelled",
-                kind="boolean",
-                default=False,
-            ),
-            Parameter(name="doc_types", label="Document types", kind="select", multiple=True),
-        ),
-        output_columns=("name", "effective_date", "count"),
-    )
 
 
 def test_find_subject_returns_ui_detail_tables() -> None:
@@ -255,3 +365,69 @@ def test_find_person_focus_returns_ui_detail_tables() -> None:
     assert result.tables[1].rows == [{"role": "Director"}]
     assert result.tables[2].rows == [{"branch": "authority"}]
     assert reader.calls[2][1] == {"person_id": "p1", "include_cancelled": True}
+
+
+def test_find_organization_browse_stays_single_table() -> None:
+    workflow = build_organization_workflow()
+    reader = SequencedGraphReader([[{"organization_id": "org-1", "label": "AEH"}]])
+    engine = WorkflowEngine(reader, catalog=(workflow,))
+
+    result = engine.run("find.organization")
+
+    assert result.tables == ()
+    assert result.rows == [{"organization_id": "org-1", "label": "AEH"}]
+    assert len(reader.calls) == 1
+
+
+def test_find_organization_focus_returns_available_detail_tables() -> None:
+    workflow = build_organization_workflow()
+    reader = SequencedGraphReader(
+        [
+            [{"organization_id": "org-1", "label": "AEH"}],
+            [{"identifier": "CHE-123"}],
+            [{"address": "Main Street"}],
+        ]
+    )
+    engine = WorkflowEngine(reader, catalog=(workflow,))
+
+    result = engine.run("find.organization", {"organization_id": "org-1"})
+
+    assert [table.table_id for table in result.tables] == [
+        "organization",
+        "organization_identifiers",
+        "organization_offices",
+    ]
+    assert result.tables[1].rows == [{"identifier": "CHE-123"}]
+    assert result.tables[2].rows == [{"address": "Main Street"}]
+    assert reader.calls[1][1] == {"organization_id": "org-1"}
+    assert reader.calls[2][1] == {"organization_id": "org-1"}
+
+
+def test_capital_workflow_uses_event_and_holder_queries() -> None:
+    workflow = build_capital_workflow()
+    reader = SequencedGraphReader(
+        [
+            [{"subject": "AEH", "effective_date": "2020-01-01", "event": "Issue"}],
+            [{"holder": "Shareholder"}],
+        ]
+    )
+    engine = WorkflowEngine(reader, catalog=(workflow,))
+
+    result = engine.run(
+        "capital.shareholdings",
+        {"subject_id": "subject-aeh", "organization_id": "org-1"},
+    )
+
+    assert reader.calls[0][0] == repository.CAPITAL_EVENTS
+    assert reader.calls[1][0] == repository.CAPITAL_HOLDERS
+    assert reader.calls[0][1] == {
+        "subject_id": "subject-aeh",
+        "organization_id": "org-1",
+        "as_of": "",
+        "limit": 50,
+    }
+    assert [table.table_id for table in result.tables] == [
+        "capital_events",
+        "capital_holders",
+    ]
+    assert result.cypher == repository.CAPITAL_EVENTS

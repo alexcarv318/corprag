@@ -173,6 +173,7 @@ corporate-rag/
 14. Agent tools remain read-only unless a future admin graph mutation surface is explicitly designed.
 15. Ingestion is architected now, but full corporate ingestion quality is not a phase-1 implementation target.
 16. Local Neo4j configuration must track the existing production/pilot Neo4j Enterprise line, plugins, databases, import paths, and MCP support services.
+17. Product code and tests in `corporate-rag` must read as a first-class product implementation, not as a compatibility layer or numbered remake. Historical source-project labels such as old version names, migration-only module names, parity wrappers, and pilot/legacy wording belong only in migration planning notes, not in runtime modules, public API text, or test names.
 
 ## 4. Target Architecture
 

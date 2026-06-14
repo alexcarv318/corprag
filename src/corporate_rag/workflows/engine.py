@@ -20,6 +20,8 @@ DATE_SORT_PRIORITY: tuple[str, ...] = (
     "effective_date",
     "as_of",
     "term_start",
+    "latest_certificate_date",
+    "latest_good_standing_date",
     "date_of_incorporation",
     "valid_to",
     "phase_valid_to",
@@ -77,18 +79,15 @@ class WorkflowEngine:
         workflow: Workflow,
         supplied_parameters: dict[str, Any],
     ) -> dict[str, Any]:
-        known_parameters = {parameter.name for parameter in workflow.parameters}
-        unknown_parameters = set(supplied_parameters) - known_parameters
-        if unknown_parameters:
-            unknown = ", ".join(sorted(unknown_parameters))
-            raise ValueError(f"Unknown parameter(s) for {workflow.workflow_id}: {unknown}")
-
         result: dict[str, Any] = {}
         for parameter in workflow.parameters:
             raw_value = supplied_parameters.get(parameter.name, parameter.default)
             coerced_value = coerce_workflow_value(parameter, raw_value)
             if parameter.required and (coerced_value is None or coerced_value == ""):
-                raise ValueError(f"Missing required parameter: {parameter.name}")
+                raise ValueError(
+                    f"Workflow {workflow.workflow_id!r} requires parameter "
+                    f"{parameter.name!r}."
+                )
             result[parameter.name] = coerced_value
 
         return result
@@ -102,7 +101,12 @@ class WorkflowEngine:
             return list(workflow.output_columns)
         if not rows:
             return []
-        return list(rows[0].keys())
+        columns: list[str] = []
+        for row in rows:
+            for key in row:
+                if key not in columns:
+                    columns.append(key)
+        return columns
 
     def read_normalized(
         self,
@@ -122,6 +126,10 @@ class WorkflowEngine:
 
         normalized_rows = normalize_and_sort_rows(rows)
         columns = self.derive_columns(workflow, normalized_rows)
+        if coerced_parameters.get("include_cancelled") is False and "cancelled" in columns:
+            columns = [column for column in columns if column != "cancelled"]
+            for row in normalized_rows:
+                row.pop("cancelled", None)
 
         return WorkflowResult(
             workflow_id=workflow.workflow_id,
@@ -154,11 +162,38 @@ class WorkflowEngine:
         primary_columns = self.derive_columns(workflow, primary_rows)
         identifier_columns = columns_or_default(
             identifier_rows,
-            list(repository.SUBJECT_IDENTIFIER_COLUMNS),
+            [
+                "subject_id",
+                "subject",
+                "phase_id",
+                "phase_label",
+                "phase_valid_from",
+                "phase_valid_to",
+                "identifier",
+                "kind",
+                "scheme",
+                "governing_law",
+                "status",
+                "sources",
+            ],
         )
         board_columns = columns_or_default(
             board_rows,
-            list(repository.SUBJECT_BOARD_HISTORY_COLUMNS),
+            [
+                "subject",
+                "legal_entity",
+                "person",
+                "role",
+                "valid_from",
+                "valid_to",
+                "status",
+                "events",
+                "event_types",
+                "evidence_status",
+                "sources",
+                "evidence_doc_types",
+                "evidence_titles",
+            ],
         )
         tables = (
             WorkflowResultTable(
@@ -271,7 +306,7 @@ class WorkflowEngine:
                     table_id="organization_identifiers",
                     title="Identifiers",
                     rows=identifier_rows,
-                    columns=list(repository.ORGANIZATION_IDENTIFIER_COLUMNS),
+                    columns=list(identifier_rows[0].keys()),
                     row_count=len(identifier_rows),
                 )
             )
@@ -281,7 +316,7 @@ class WorkflowEngine:
                     table_id="organization_offices",
                     title="Registered offices",
                     rows=office_rows,
-                    columns=list(repository.ORGANIZATION_OFFICE_COLUMNS),
+                    columns=list(office_rows[0].keys()),
                     row_count=len(office_rows),
                 )
             )
@@ -328,7 +363,23 @@ class WorkflowEngine:
                 )
             )
         return workflow_result_with_tables(
-            workflow, coerced_parameters, primary_rows, primary_columns, elapsed_ms, tuple(tables)
+            Workflow(
+                workflow_id=workflow.workflow_id,
+                title=workflow.title,
+                category=workflow.category,
+                description=workflow.description,
+                cypher=repository.CAPITAL_EVENTS,
+                parameters=workflow.parameters,
+                output_columns=workflow.output_columns,
+                notes=workflow.notes,
+                use_cases=workflow.use_cases,
+                dev_only=workflow.dev_only,
+            ),
+            coerced_parameters,
+            primary_rows,
+            primary_columns,
+            elapsed_ms,
+            tuple(tables),
         )
 
 
@@ -453,9 +504,75 @@ def normalize_workflow_value(value: Any) -> Any:
     return str(value)
 
 
+def as_list(value: Any) -> list[Any]:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    if isinstance(value, tuple):
+        return list(value)
+    if isinstance(value, set):
+        return list(value)
+    return [value]
+
+
+def normalize_source_entry(entry: dict[str, Any]) -> list[dict[str, Any]]:
+    file_values = [
+        str(file_value)
+        for file_value in as_list(entry.get("file"))
+        if file_value not in (None, "")
+    ]
+    if not file_values:
+        return []
+
+    chunk_values = [
+        None if chunk_value in ("", None) else str(chunk_value)
+        for chunk_value in as_list(entry.get("chunk_id"))
+    ]
+    if not chunk_values:
+        chunk_values = [None]
+
+    if len(file_values) == len(chunk_values):
+        pairs = list(zip(file_values, chunk_values, strict=True))
+    elif len(file_values) == 1:
+        pairs = [(file_values[0], chunk_value) for chunk_value in chunk_values]
+    elif len(chunk_values) == 1:
+        pairs = [(file_value, chunk_values[0]) for file_value in file_values]
+    else:
+        pairs = [
+            (
+                file_value,
+                chunk_values[index] if index < len(chunk_values) else None,
+            )
+            for index, file_value in enumerate(file_values)
+        ]
+
+    return [
+        {**entry, "file": file_value, "chunk_id": chunk_value}
+        for file_value, chunk_value in pairs
+    ]
+
+
+def normalize_source_collections(row: dict[str, Any]) -> dict[str, Any]:
+    normalized: dict[str, Any] = {}
+    for key, value in row.items():
+        if isinstance(value, list) and all(
+            isinstance(entry, dict) and "file" in entry for entry in value
+        ):
+            flattened: list[dict[str, Any]] = []
+            for entry in value:
+                flattened.extend(normalize_source_entry(entry))
+            normalized[key] = flattened
+            continue
+        normalized[key] = value
+    return normalized
+
+
 def normalize_and_sort_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     normalized_rows = [
-        {key: normalize_workflow_value(value) for key, value in row.items()}
+        normalize_source_collections(
+            {key: normalize_workflow_value(value) for key, value in row.items()}
+        )
         for row in rows
     ]
     return sort_rows_by_date_desc(normalized_rows)
@@ -486,5 +603,19 @@ def pick_date_sort_column(rows: list[dict[str, Any]]) -> str | None:
             continue
         if any(row.get(column) not in (None, "") for row in rows):
             return column
+
+    for suffix in ("_valid_from", "_from", "_effective_date", "_date"):
+        for column in row_keys:
+            if not column.endswith(suffix):
+                continue
+            if any(row.get(column) not in (None, "") for row in rows):
+                return column
+
+    for suffix in ("_valid_to", "_to", "_end"):
+        for column in row_keys:
+            if not column.endswith(suffix):
+                continue
+            if any(row.get(column) not in (None, "") for row in rows):
+                return column
 
     return None

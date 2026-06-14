@@ -5,6 +5,24 @@ from corporate_rag.typeahead.repository import (
     context_clause_for_kind,
     typeahead_cypher_for_kind,
 )
+from corporate_rag.workflows import repository as workflow_repository
+
+WORKFLOW_QUERY_NAMES = (
+    "SUBJECT_OVERVIEW",
+    "ORGANIZATION_OVERVIEW",
+    "PERSON_OVERVIEW",
+    "DOCUMENTS_SEARCH",
+    "CAPITAL_EVENTS",
+    "POA_REGISTER",
+    "EVENTS_TIMELINE",
+    "SUBJECT_IDENTIFIERS",
+    "SUBJECT_BOARD_HISTORY",
+    "PERSON_ROLES",
+    "PERSON_AUTHORITY",
+    "ORGANIZATION_IDENTIFIERS",
+    "ORGANIZATION_OFFICES",
+    "CAPITAL_HOLDERS",
+)
 
 
 def test_typeahead_query_layer_builds_subject_search_query() -> None:
@@ -46,3 +64,12 @@ def test_facet_query_layer_resolves_documents_doc_type_query() -> None:
 def test_facet_query_layer_rejects_unknown_pair() -> None:
     with pytest.raises(KeyError):
         get_facet("find.subject", "missing")
+
+
+def test_workflow_repository_queries_are_readable_multiline_strings() -> None:
+    for query_name in WORKFLOW_QUERY_NAMES:
+        query = getattr(workflow_repository, query_name)
+
+        assert "\n" in query
+        assert "\\n" not in query
+        assert query == query.strip()

@@ -63,8 +63,7 @@ def create_app(
         description=(
             "Clean backend API for the Corporate RAG product. The current surface "
             "covers graph workflows, workflow form helpers, evidence lookup, and "
-            "document source retrieval. Legacy pilot routes are intentionally not "
-            "exposed."
+            "document source retrieval."
         ),
         version="0.1.0",
         openapi_tags=OPENAPI_TAGS,

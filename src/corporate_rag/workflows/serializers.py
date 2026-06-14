@@ -9,6 +9,7 @@ def workflow_public_payload(workflow: Workflow) -> dict[str, Any]:
         "title": workflow.title,
         "category": workflow.category,
         "description": workflow.description,
+        "cypher": workflow.cypher,
         "parameters": [parameter.to_dict() for parameter in workflow.parameters],
         "output_columns": list(workflow.output_columns),
         "notes": workflow.notes,
@@ -18,6 +19,4 @@ def workflow_public_payload(workflow: Workflow) -> dict[str, Any]:
 
 
 def workflow_result_public_payload(result: WorkflowResult) -> dict[str, Any]:
-    payload = result.to_dict()
-    payload.pop("cypher", None)
-    return payload
+    return result.to_dict()
