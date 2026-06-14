@@ -1,9 +1,14 @@
+import hashlib
+import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
+from chainlit.utils import mount_chainlit
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from corporate_rag.agents.api import router as agents_router
 from corporate_rag.app.dependencies import current_user
 from corporate_rag.app.health import router as health_router
 from corporate_rag.auth.router import router as auth_router
@@ -12,7 +17,13 @@ from corporate_rag.evidence.router import router as evidence_router
 from corporate_rag.facets.router import router as facets_router
 from corporate_rag.graph.interfaces import BaseGraphReader
 from corporate_rag.graph.neo4j_client import build_corporate_graph_client
-from corporate_rag.settings import AppSettings, load_app_settings, load_neo4j_settings
+from corporate_rag.settings import (
+    AppSettings,
+    load_agent_settings,
+    load_app_settings,
+    load_auth_settings,
+    load_neo4j_settings,
+)
 from corporate_rag.typeahead.router import router as typeahead_router
 from corporate_rag.workflows.catalog import CATALOG
 from corporate_rag.workflows.engine import WorkflowEngine
@@ -46,6 +57,10 @@ OPENAPI_TAGS = [
     {
         "name": "documents",
         "description": "Document source text and compact document metadata.",
+    },
+    {
+        "name": "agents",
+        "description": "Native React agent configuration and Chainlit protocol handoff.",
     },
 ]
 
@@ -90,6 +105,8 @@ def create_app(
     app.state.settings = resolved_settings
     app.state.workflow_engine = resolved_workflow_engine
     app.state.graph_reader = resolved_graph_reader
+    app.state.agent_settings = load_agent_settings()
+    app.state.auth_settings = load_auth_settings()
 
     if resolved_settings.cors_origins:
         app.add_middleware(
@@ -128,5 +145,24 @@ def create_app(
         prefix=resolved_settings.api_prefix,
         dependencies=protected_dependencies,
     )
+    app.include_router(
+        agents_router,
+        prefix=resolved_settings.api_prefix,
+        dependencies=protected_dependencies,
+    )
+
+    _mount_chainlit_runtime(app)
 
     return app
+
+
+def _mount_chainlit_runtime(app: FastAPI) -> None:
+    agent_config = load_agent_settings()
+    auth_config = load_auth_settings()
+    chainlit_secret = hashlib.sha256(auth_config.secret_key.encode("utf-8")).hexdigest()
+    os.environ.setdefault("CHAINLIT_AUTH_SECRET", chainlit_secret)
+    # Chainlit auto-enables its own data layer when DATABASE_URL is present.
+    # This adapter is stateless; product persistence uses CORPORATE_RAG_DATABASE_URL.
+    os.environ.pop("DATABASE_URL", None)
+    target = Path(__file__).resolve().parents[1] / "agents" / "chainlit_app.py"
+    mount_chainlit(app=app, target=str(target), path=agent_config.chainlit_mount_path)

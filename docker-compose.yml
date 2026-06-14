@@ -65,13 +65,21 @@ services:
       CORPORATE_RAG_AUTH_SIGNUP_KEY: ${CORPORATE_RAG_AUTH_SIGNUP_KEY:-}
       CORPORATE_RAG_AUTH_SECRET_KEY: ${CORPORATE_RAG_AUTH_SECRET_KEY:?set CORPORATE_RAG_AUTH_SECRET_KEY in .env}
       CORPORATE_RAG_AUTH_ACCESS_TOKEN_TTL_SECONDS: ${CORPORATE_RAG_AUTH_ACCESS_TOKEN_TTL_SECONDS:-43200}
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-corporate_rag}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-corporate_rag}
+      CORPORATE_RAG_AGENT_OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      CORPORATE_RAG_AGENT_CORPORATE_MCP_TRANSPORT: streamable_http
+      CORPORATE_RAG_AGENT_CORPORATE_MCP_URL: http://mcp-neo4j:8000/mcp/
+      CORPORATE_RAG_AGENT_LAW_MCP_TRANSPORT: streamable_http
+      CORPORATE_RAG_AGENT_LAW_MCP_URL: http://mcp-neo4j-law:8000/mcp/
     ports:
       - "${CORPORATE_RAG_APP_PORT:-8088}:8088"
     depends_on:
       postgres:
         condition: service_healthy
       neo4j:
+        condition: service_healthy
+      mcp-neo4j:
+        condition: service_healthy
+      mcp-neo4j-law:
         condition: service_healthy
     networks:
       - corporate-rag

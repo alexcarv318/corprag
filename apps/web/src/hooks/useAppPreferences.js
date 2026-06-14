@@ -9,6 +9,7 @@ export function useAppPreferences() {
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
+    document.documentElement.style.colorScheme = theme;
     saveTheme(theme);
   }, [theme]);
 

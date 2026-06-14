@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { signOut, verifyStoredSession } from "./api/auth.js";
+import AgentPage from "./features/agent/AgentPage.jsx";
 import SignInView from "./features/auth/SignInView.jsx";
 import WorkflowConsole from "./features/workflows/WorkflowConsole.jsx";
 
@@ -39,9 +40,36 @@ export default function App() {
     setAuthState({ status: "anonymous", user: null });
   }
 
-  if (authState.status !== "authenticated") {
-    return <SignInView loading={authState.status === "loading"} onSignedIn={handleSignedIn} />;
+  if (authState.status === "loading") {
+    return <SessionLoadingView />;
+  }
+
+  if (authState.status === "anonymous") {
+    return <SignInView onSignedIn={handleSignedIn} />;
+  }
+
+  if (window.location.pathname.startsWith("/agent")) {
+    return (
+      <AgentPage
+        user={authState.user}
+        onSignOut={handleSignOut}
+        onOpenWorkflows={() => {
+          window.location.href = "/";
+        }}
+      />
+    );
   }
 
   return <WorkflowConsole user={authState.user} onSignOut={handleSignOut} />;
+}
+
+function SessionLoadingView() {
+  return (
+    <main className="session-loading-page" aria-busy="true" aria-live="polite">
+      <div className="session-loading-panel">
+        <div className="session-loading-spinner" aria-hidden="true" />
+        <span>Checking session</span>
+      </div>
+    </main>
+  );
 }

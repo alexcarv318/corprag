@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import { isAuthError, signIn, signUp } from "../../api/auth.js";
 
-export default function SignInView({ loading, onSignedIn }) {
+export default function SignInView({ onSignedIn }) {
   const [mode, setMode] = useState("sign-in");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -44,7 +44,7 @@ export default function SignInView({ loading, onSignedIn }) {
             <input
               autoComplete="username"
               autoFocus
-              disabled={loading || busy}
+              disabled={busy}
               name="username"
               value={username}
               onChange={(event) => setUsername(event.target.value)}
@@ -54,7 +54,7 @@ export default function SignInView({ loading, onSignedIn }) {
             <span>Password</span>
             <input
               autoComplete="current-password"
-              disabled={loading || busy}
+              disabled={busy}
               name="password"
               type="password"
               value={password}
@@ -66,7 +66,7 @@ export default function SignInView({ loading, onSignedIn }) {
               <span>Invite key</span>
               <input
                 autoComplete="off"
-                disabled={loading || busy}
+                disabled={busy}
                 name="signup-key"
                 type="password"
                 value={signupKey}
@@ -76,10 +76,10 @@ export default function SignInView({ loading, onSignedIn }) {
           ) : null}
           <button
             className="signin-submit"
-            disabled={loading || busy || !username.trim() || !password || (isSignUp && !signupKey)}
+            disabled={busy || !username.trim() || !password || (isSignUp && !signupKey)}
             type="submit"
           >
-            {submitLabel({ loading, busy, isSignUp })}
+            {submitLabel({ busy, isSignUp })}
           </button>
           <p className="signin-error" role="alert">{error}</p>
           <div className="signin-mode-switch">
@@ -95,8 +95,7 @@ export default function SignInView({ loading, onSignedIn }) {
   );
 }
 
-function submitLabel({ loading, busy, isSignUp }) {
-  if (loading) return "Checking session";
+function submitLabel({ busy, isSignUp }) {
   if (busy) return isSignUp ? "Creating account" : "Signing in";
   return isSignUp ? "Create account" : "Sign in";
 }

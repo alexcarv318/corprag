@@ -6,7 +6,12 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "alembic>=1.17.2",
+    "chainlit>=2.11.1",
+    "deepagents>=0.6.2",
     "fastapi>=0.136.1",
+    "langchain>=1.2.17",
+    "langchain-openai>=1.2.1",
+    "mcp>=1.12.0",
     "neo4j>=6.1.0",
     "psycopg[binary,pool]>=3.3.2",
     "pydantic-settings>=2.12.0",
@@ -25,6 +30,8 @@ dev = [
 
 [project.scripts]
 corporate-rag = "corporate_rag.cli:main"
+corporate-rag-internal-mcp = "corporate_rag.internal_agent.mcp:main"
+corporate-rag-law-mcp = "corporate_rag.law_agent.mcp:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -59,5 +66,5 @@ skip_covered = true
 fail_under = 75
 
 [tool.ruff.lint.per-file-ignores]
-"src/corporate_rag/workflows/queries/catalog.py" = ["E501"]
-"src/corporate_rag/workflows/queries/typeahead.py" = ["E501"]
+"src/corporate_rag/internal_agent/prompt.py" = ["E501"]
+"src/corporate_rag/law_agent/prompt.py" = ["E501"]

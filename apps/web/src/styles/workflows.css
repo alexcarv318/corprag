@@ -2011,7 +2011,34 @@
     to   { transform: rotate(360deg); }
   }
 
-  /* Sign-in ----------------------------------------------------------- */
+  /* Auth -------------------------------------------------------------- */
+  .session-loading-page {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: var(--main-bg);
+  }
+  .session-loading-panel {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--fg-dim);
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .session-loading-spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid color-mix(in srgb, var(--fg-dim) 34%, transparent);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: ta-spin 0.7s linear infinite;
+  }
   .auth-page {
     position: fixed;
     inset: 0;

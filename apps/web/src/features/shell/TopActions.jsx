@@ -3,7 +3,7 @@ export default function TopActions({ theme, onThemeToggle, menuOpen, setMenuOpen
 
   return (
     <div className="top-actions" aria-label="Page actions">
-      <a className="top-agent-link" href="/agent/" target="_self" rel="noopener noreferrer" title="Open the Corprag agent">
+      <a className="top-agent-link" href="/agent" target="_self" rel="noopener noreferrer" title="Open the Corprag agent">
         Agent
       </a>
       <button id="theme-toggle" className="top-icon-btn" type="button" title={`Theme: ${theme}`} aria-label={`Theme: ${theme}`} onClick={onThemeToggle}>

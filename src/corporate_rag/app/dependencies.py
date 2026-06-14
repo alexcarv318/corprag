@@ -9,9 +9,11 @@ from corporate_rag.auth.tokens import InvalidTokenError, verify_access_token
 from corporate_rag.db.session import create_database_pool
 from corporate_rag.graph.interfaces import BaseGraphReader
 from corporate_rag.settings import (
+    AgentSettings,
     AppSettings,
     AuthSettings,
     DatabaseSettings,
+    load_agent_settings,
     load_auth_settings,
     load_database_settings,
 )
@@ -56,6 +58,14 @@ def auth_settings(request: Request) -> AuthSettings:
     if not isinstance(settings, AuthSettings):
         settings = load_auth_settings()
         request.app.state.auth_settings = settings
+    return settings
+
+
+def agent_settings(request: Request) -> AgentSettings:
+    settings = getattr(request.app.state, "agent_settings", None)
+    if not isinstance(settings, AgentSettings):
+        settings = load_agent_settings()
+        request.app.state.agent_settings = settings
     return settings
 
 

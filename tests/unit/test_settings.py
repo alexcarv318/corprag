@@ -2,7 +2,13 @@ from pathlib import Path
 
 import pytest
 
-from corporate_rag.settings import AppSettings, AuthSettings, DatabaseSettings, Neo4jSettings
+from corporate_rag.settings import (
+    AgentSettings,
+    AppSettings,
+    AuthSettings,
+    DatabaseSettings,
+    Neo4jSettings,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -21,6 +27,12 @@ def clear_settings_environment(
         "CORPORATE_RAG_DATABASE_POOL_MIN_SIZE",
         "CORPORATE_RAG_DATABASE_POOL_MAX_SIZE",
         "CORPORATE_RAG_AUTH_SIGNUP_KEY",
+        "CORPORATE_RAG_AGENT_CORPORATE_MCP_TRANSPORT",
+        "CORPORATE_RAG_AGENT_CORPORATE_MCP_URL",
+        "CORPORATE_RAG_AGENT_LAW_MCP_TRANSPORT",
+        "CORPORATE_RAG_AGENT_LAW_MCP_URL",
+        "CORPORATE_RAG_AGENT_OPENAI_API_KEY",
+        "OPENAI_API_KEY",
         "CORPORATE_RAG_NEO4J_URI",
         "CORPORATE_RAG_NEO4J_USER",
         "CORPORATE_RAG_NEO4J_PASSWORD",
@@ -111,6 +123,29 @@ def test_auth_settings_accept_signup_key(monkeypatch: pytest.MonkeyPatch) -> Non
     settings = AuthSettings()
 
     assert settings.signup_key == "secret"
+
+
+def test_agent_settings_defaults_match_local_mcp_services() -> None:
+    settings = AgentSettings()
+
+    assert settings.corporate_mcp_transport == "streamable_http"
+    assert settings.corporate_mcp_url == "http://127.0.0.1:18800/mcp/"
+    assert settings.law_mcp_transport == "streamable_http"
+    assert settings.law_mcp_url == "http://127.0.0.1:18801/mcp/"
+
+
+def test_agent_settings_accept_mcp_environment_overrides(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("CORPORATE_RAG_AGENT_CORPORATE_MCP_TRANSPORT", "streamable_http")
+    monkeypatch.setenv("CORPORATE_RAG_AGENT_CORPORATE_MCP_URL", "http://mcp-neo4j:8000/mcp/")
+    monkeypatch.setenv("CORPORATE_RAG_AGENT_LAW_MCP_TRANSPORT", "streamable_http")
+    monkeypatch.setenv("CORPORATE_RAG_AGENT_LAW_MCP_URL", "http://mcp-law:8000/mcp/")
+
+    settings = AgentSettings()
+
+    assert settings.corporate_mcp_url == "http://mcp-neo4j:8000/mcp/"
+    assert settings.law_mcp_url == "http://mcp-law:8000/mcp/"
 
 
 def test_neo4j_settings_accept_explicit_values() -> None:
