@@ -135,12 +135,22 @@ export function useAgentSession({ api, config }) {
     if (!pendingResumeId || idToResume !== pendingResumeId) return;
     disconnectRef.current();
     connectSessionRef.current()
-      .then(() => setPendingResumeId(null))
       .catch((requestError) => {
         setConnectionError(requestError.message || "Unable to resume session.");
         setPendingResumeId(null);
       });
   }, [idToResume, pendingResumeId]);
+
+  useEffect(() => {
+    if (!pendingResumeId || threadId !== pendingResumeId || !messages.length) return;
+    setPendingResumeId(null);
+  }, [messages.length, pendingResumeId, threadId]);
+
+  useEffect(() => {
+    if (!pendingResumeId || threadId !== pendingResumeId) return undefined;
+    const timeout = window.setTimeout(() => setPendingResumeId(null), 1800);
+    return () => window.clearTimeout(timeout);
+  }, [pendingResumeId, threadId]);
 
   useEffect(() => {
     if (!threadId || loading) return;
@@ -166,6 +176,7 @@ export function useAgentSession({ api, config }) {
   );
 
   const newChat = useCallback(() => {
+    setPendingResumeId(null);
     setIdToResume(undefined);
     clear();
     setChainlitMessages([]);
@@ -197,7 +208,7 @@ export function useAgentSession({ api, config }) {
   return {
     actions,
     activeMode,
-    activeSessionId: threadId,
+    activeSessionId: pendingResumeId || threadId,
     activeStarters,
     agentVersion,
     config,

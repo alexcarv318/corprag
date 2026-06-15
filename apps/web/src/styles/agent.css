@@ -6,6 +6,33 @@ body.agent-sidebar-collapsed:has(.agent-page-main) {
   grid-template-columns: 52px 1fr;
 }
 
+body.agent-sources-open:has(.agent-page-main) {
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr) calc(var(--sidebar-width) * 1.5);
+  grid-template-areas: "side main sources";
+}
+
+body.agent-sources-opening:has(.agent-page-main) {
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr) 0;
+  grid-template-areas: "side main sources";
+}
+
+body.agent-sources-closing:has(.agent-page-main) {
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr) 0;
+  grid-template-areas: "side main sources";
+}
+
+body.agent-sidebar-collapsed.agent-sources-open:has(.agent-page-main) {
+  grid-template-columns: 52px minmax(0, 1fr) calc(var(--sidebar-width) * 1.5);
+}
+
+body.agent-sidebar-collapsed.agent-sources-opening:has(.agent-page-main) {
+  grid-template-columns: 52px minmax(0, 1fr) 0;
+}
+
+body.agent-sidebar-collapsed.agent-sources-closing:has(.agent-page-main) {
+  grid-template-columns: 52px minmax(0, 1fr) 0;
+}
+
 .agent-loading {
   align-items: center;
   background: var(--main-bg);
@@ -143,6 +170,11 @@ aside .item.agent-session-row .workflow-icon svg {
   max-width: none;
   overflow: hidden;
   padding: 0;
+  position: relative;
+}
+
+.agent-page-main .top-actions {
+  position: absolute;
 }
 
 .agent-thread {
@@ -330,6 +362,14 @@ aside .item.agent-session-row .workflow-icon svg {
   font-weight: 650;
   text-decoration: none;
   vertical-align: super;
+}
+
+.agent-message-content a.agent-citation-link {
+  cursor: pointer;
+}
+
+.agent-message-content a.agent-citation-link:hover {
+  text-decoration: underline;
 }
 
 .agent-table-wrap {
@@ -657,6 +697,31 @@ aside .item.agent-session-row .workflow-icon svg {
   text-align: center;
 }
 
+.agent-sources-drawer {
+  border-left: 1px solid color-mix(in srgb, var(--border) 84%, transparent);
+  border-right: 0;
+  bottom: auto;
+  box-shadow: none;
+  grid-area: sources;
+  height: 100vh;
+  position: relative;
+  right: auto;
+  top: auto;
+  transform: none;
+  width: auto;
+  z-index: 80;
+}
+
+.agent-sources-drawer.open {
+  opacity: 1;
+  transform: none;
+}
+
+.agent-sources-drawer:not(.open) {
+  opacity: 0;
+  overflow: hidden;
+}
+
 @keyframes agent-caret {
   50% { opacity: 0; }
 }
@@ -687,6 +752,16 @@ aside .item.agent-session-row .workflow-icon svg {
     grid-template-columns: 1fr;
   }
 
+  body.agent-sources-open:has(.agent-page-main),
+  body.agent-sources-opening:has(.agent-page-main),
+  body.agent-sources-closing:has(.agent-page-main),
+  body.agent-sidebar-collapsed.agent-sources-opening:has(.agent-page-main),
+  body.agent-sidebar-collapsed.agent-sources-closing:has(.agent-page-main),
+  body.agent-sidebar-collapsed.agent-sources-open:has(.agent-page-main) {
+    grid-template-columns: 1fr;
+    grid-template-areas: "main";
+  }
+
   .agent-sessions-drawer {
     display: none;
   }
@@ -705,5 +780,9 @@ aside .item.agent-session-row .workflow-icon svg {
 
   .agent-tool-activity {
     margin-left: 0;
+  }
+
+  .agent-sources-drawer {
+    display: none;
   }
 }

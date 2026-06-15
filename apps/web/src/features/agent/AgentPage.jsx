@@ -1,9 +1,11 @@
 import { ChainlitContext } from "@chainlit/react-client";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { useSourceDrawer } from "../../hooks/useSourceDrawer.js";
 import { useAppPreferences } from "../../hooks/useAppPreferences.js";
 import SidebarToggleIcon from "../shell/SidebarToggleIcon.jsx";
 import TopActions from "../shell/TopActions.jsx";
+import DocumentSourceDrawer from "../documents/DocumentSourceDrawer.jsx";
 import { getAgentConfig, makeChainlitApi } from "./client.js";
 import { useAgentSession } from "../../hooks/useAgentSession.js";
 
@@ -69,12 +71,36 @@ function AgentWorkspace({ config, user, onSignOut, theme, setTheme, collapsed, s
   const [settingsOpen, setSettingsOpen] = useState(false);
   const threadRef = useRef(null);
   const textareaRef = useRef(null);
+  const { drawer, openDocument, openSources, closeDrawer, backToSources } = useSourceDrawer();
+  const [sourceLayoutState, setSourceLayoutState] = useState("closed");
 
   useEffect(() => {
     document.body.classList.remove("workflow-sidebar-collapsed");
     document.body.classList.toggle("agent-sidebar-collapsed", collapsed);
     return () => document.body.classList.remove("agent-sidebar-collapsed");
   }, [collapsed]);
+
+  useEffect(() => {
+    if (drawer) {
+      setSourceLayoutState((current) => (current === "open" ? "open" : "opening"));
+      const frame = window.requestAnimationFrame(() => setSourceLayoutState("open"));
+      return () => window.cancelAnimationFrame(frame);
+    }
+    setSourceLayoutState((current) => (current === "open" || current === "opening" ? "closing" : "closed"));
+    const timeout = window.setTimeout(() => setSourceLayoutState("closed"), 180);
+    return () => window.clearTimeout(timeout);
+  }, [drawer]);
+
+  useEffect(() => {
+    document.body.classList.toggle("agent-sources-open", sourceLayoutState === "open");
+    document.body.classList.toggle("agent-sources-opening", sourceLayoutState === "opening");
+    document.body.classList.toggle("agent-sources-closing", sourceLayoutState === "closing");
+    return () => {
+      document.body.classList.remove("agent-sources-open");
+      document.body.classList.remove("agent-sources-opening");
+      document.body.classList.remove("agent-sources-closing");
+    };
+  }, [sourceLayoutState]);
 
   useEffect(() => {
     threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: "smooth" });
@@ -92,6 +118,12 @@ function AgentWorkspace({ config, user, onSignOut, theme, setTheme, collapsed, s
     if (!draft.trim() || agent.running) return;
     agent.sendMessage(draft);
     setDraft("");
+  }
+
+  function openAgentSource(source, sources) {
+    const sourceList = sources?.length ? sources : [source];
+    openSources(sourceList, "Cited documents");
+    openDocument(source);
   }
 
   return (
@@ -120,7 +152,7 @@ function AgentWorkspace({ config, user, onSignOut, theme, setTheme, collapsed, s
             <AgentWelcome agent={agent} />
           ) : (
             <>
-              <ConversationMessages messages={agent.messages} running={agent.running} />
+              <ConversationMessages messages={agent.messages} running={agent.running} onSourceOpen={openAgentSource} />
               <AgentTaskLists tasklists={agent.tasklists} />
             </>
           )}
@@ -165,6 +197,13 @@ function AgentWorkspace({ config, user, onSignOut, theme, setTheme, collapsed, s
         </form>
         <div className="agent-disclaimer">Corprag can make mistakes. Check important info.</div>
       </main>
+      <DocumentSourceDrawer
+        className="agent-sources-drawer"
+        drawer={drawer}
+        onBack={backToSources}
+        onClose={closeDrawer}
+        onOpenDocument={openDocument}
+      />
     </>
   );
 }
@@ -318,19 +357,19 @@ function AgentSettingsPopover({ agent, open }) {
   );
 }
 
-function ConversationMessages({ messages, running }) {
+function ConversationMessages({ messages, running, onSourceOpen }) {
   const turns = groupMessagesByTurn(messages);
   return turns.map((turn, index) => (
     <div className="agent-turn" key={turn.id}>
-      {turn.user ? <AgentMessage message={turn.user} /> : null}
-      {turn.tools.length ? <ToolActivityGroup tools={turn.tools} active={running && index === turns.length - 1} /> : null}
-      {turn.assistants.map((message) => <AgentMessage key={message.id} message={message} />)}
-      {turn.orphans.map((message) => <AgentMessage key={message.id} message={message} />)}
+      {turn.user ? <AgentMessage message={turn.user} onSourceOpen={onSourceOpen} /> : null}
+      {turn.tools.length ? <ToolActivityGroup tools={turn.tools} active={running && index === turns.length - 1} onSourceOpen={onSourceOpen} /> : null}
+      {turn.assistants.map((message) => <AgentMessage key={message.id} message={message} onSourceOpen={onSourceOpen} />)}
+      {turn.orphans.map((message) => <AgentMessage key={message.id} message={message} onSourceOpen={onSourceOpen} />)}
     </div>
   ));
 }
 
-function ToolActivityGroup({ tools, active }) {
+function ToolActivityGroup({ tools, active, onSourceOpen }) {
   const running = active || tools.some((tool) => tool.streaming);
 
   return (
@@ -340,7 +379,7 @@ function ToolActivityGroup({ tools, active }) {
         <span className="agent-tool-activity-label">{running ? "Using tools" : "Used tools"}</span>
       </summary>
       <div className="agent-tool-activity-body">
-        {tools.map((message) => <AgentMessage key={message.id} message={message} />)}
+        {tools.map((message) => <AgentMessage key={message.id} message={message} onSourceOpen={onSourceOpen} />)}
       </div>
     </details>
   );
@@ -390,10 +429,11 @@ function groupMessagesByTurn(messages) {
   return turns;
 }
 
-function AgentMessage({ message }) {
+function AgentMessage({ message, onSourceOpen }) {
   const isUser = message.role === "user";
   const isTool = message.role === "tool";
   const author = isUser ? "" : message.author || "Corprag";
+  const messageSources = useMemo(() => sourcesFromContent(message.content), [message.content]);
 
   return (
     <article className={`agent-message ${message.role}`}>
@@ -405,7 +445,7 @@ function AgentMessage({ message }) {
       <div className="agent-message-body">
         {author ? <div className="agent-message-author">{author}</div> : null}
         <div className="agent-message-content">
-          {isTool ? <ToolMessage message={message} /> : renderMarkdown(message.content)}
+          {isTool ? <ToolMessage message={message} /> : renderMarkdown(message.content, onSourceOpen, messageSources)}
           {message.streaming ? <span className="agent-caret" /> : null}
         </div>
       </div>
@@ -439,7 +479,7 @@ function AgentTaskLists({ tasklists }) {
   );
 }
 
-function renderMarkdown(content) {
+function renderMarkdown(content, onSourceOpen, messageSources = []) {
   const lines = (content || "").split("\n");
   const blocks = [];
   let index = 0;
@@ -450,13 +490,13 @@ function renderMarkdown(content) {
         table.push(lines[index]);
         index += 1;
       }
-      blocks.push(renderTable(table));
+      blocks.push(renderTable(table, onSourceOpen, messageSources));
       continue;
     }
     const heading = lines[index].match(/^(#{1,4})\s+(.+)$/);
     if (heading) {
       const Level = `h${heading[1].length + 1}`;
-      blocks.push(<Level className="agent-markdown-heading" key={`h-${index}`}>{renderInline(heading[2])}</Level>);
+      blocks.push(<Level className="agent-markdown-heading" key={`h-${index}`}>{renderInline(heading[2], onSourceOpen, messageSources)}</Level>);
       index += 1;
       continue;
     }
@@ -466,7 +506,7 @@ function renderMarkdown(content) {
         items.push(lines[index].replace(/^\s*[-*]\s+/, ""));
         index += 1;
       }
-      blocks.push(<ul key={`ul-${index}`}>{items.map((item) => <li key={item}>{renderInline(item)}</li>)}</ul>);
+      blocks.push(<ul key={`ul-${index}`}>{items.map((item) => <li key={item}>{renderInline(item, onSourceOpen, messageSources)}</li>)}</ul>);
       continue;
     }
     if (/^\s*\d+\.\s+/.test(lines[index])) {
@@ -475,7 +515,7 @@ function renderMarkdown(content) {
         items.push(lines[index].replace(/^\s*\d+\.\s+/, ""));
         index += 1;
       }
-      blocks.push(<ol key={`ol-${index}`}>{items.map((item) => <li key={item}>{renderInline(item)}</li>)}</ol>);
+      blocks.push(<ol key={`ol-${index}`}>{items.map((item) => <li key={item}>{renderInline(item, onSourceOpen, messageSources)}</li>)}</ol>);
       continue;
     }
     const paragraph = [];
@@ -484,7 +524,7 @@ function renderMarkdown(content) {
       index += 1;
     }
     if (paragraph.length) {
-      blocks.push(<p key={`p-${index}`}>{renderInline(paragraph.join(" "))}</p>);
+      blocks.push(<p key={`p-${index}`}>{renderInline(paragraph.join(" "), onSourceOpen, messageSources)}</p>);
     }
     index += 1;
   }
@@ -495,7 +535,7 @@ function isTableStart(lines, index) {
   return lines[index]?.trim().startsWith("|") && lines[index + 1]?.includes("---");
 }
 
-function renderTable(lines) {
+function renderTable(lines, onSourceOpen, messageSources) {
   const rows = lines
     .filter((line) => !/^\s*\|?\s*-+/.test(line))
     .map((line) => line.split("|").map((cell) => cell.trim()).filter(Boolean));
@@ -503,11 +543,11 @@ function renderTable(lines) {
   return (
     <div className="agent-table-wrap" key={`table-${lines.join("").length}-${head.join("-")}`}>
       <table>
-        <thead><tr>{head.map((cell) => <th key={cell}>{renderInline(cell)}</th>)}</tr></thead>
+        <thead><tr>{head.map((cell) => <th key={cell}>{renderInline(cell, onSourceOpen, messageSources)}</th>)}</tr></thead>
         <tbody>
           {body.map((row, rowIndex) => (
             <tr key={`${rowIndex}-${row.join("-")}`}>
-              {row.map((cell) => <td key={cell}>{renderInline(cell)}</td>)}
+              {row.map((cell) => <td key={cell}>{renderInline(cell, onSourceOpen, messageSources)}</td>)}
             </tr>
           ))}
         </tbody>
@@ -516,7 +556,7 @@ function renderTable(lines) {
   );
 }
 
-function renderInline(text) {
+function renderInline(text, onSourceOpen, messageSources = []) {
   const parts = [];
   const pattern = /(\[([^\]]+)]\(([^)]+)\)|\*\*([^*]+)\*\*|`([^`]+)`)/g;
   let lastIndex = 0;
@@ -524,7 +564,21 @@ function renderInline(text) {
   while (match) {
     if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index));
     if (match[2]) {
-      parts.push(<a key={`a-${match.index}-${match[2]}`} href={match[3]}>{match[2]}</a>);
+      const source = sourceFromCitationHref(match[3]);
+      parts.push(
+        <a
+          className={source ? "agent-citation-link" : undefined}
+          href={match[3]}
+          key={`a-${match.index}-${match[2]}`}
+          title={source ? "Open source document" : undefined}
+          onClick={source && onSourceOpen ? (event) => {
+            event.preventDefault();
+            onSourceOpen(source, messageSources);
+          } : undefined}
+        >
+          {match[2]}
+        </a>
+      );
     } else if (match[4]) {
       parts.push(<strong key={`strong-${match.index}`}>{match[4]}</strong>);
     } else if (match[5]) {
@@ -535,6 +589,41 @@ function renderInline(text) {
   }
   if (lastIndex < text.length) parts.push(text.slice(lastIndex));
   return parts;
+}
+
+function sourcesFromContent(content) {
+  const sources = [];
+  const seen = new Set();
+  const pattern = /\[([^\]]+)]\(([^)]+)\)/g;
+  let match = pattern.exec(content || "");
+  while (match) {
+    const source = sourceFromCitationHref(match[2]);
+    if (source) {
+      const key = `${source.file}:${source.chunk_id || ""}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        sources.push(source);
+      }
+    }
+    match = pattern.exec(content || "");
+  }
+  return sources;
+}
+
+function sourceFromCitationHref(href) {
+  if (!href.includes("agent-source") && !href.includes("corprag-source")) return null;
+  const queryStart = href.indexOf("?");
+  if (queryStart < 0) return null;
+  const queryString = href.slice(queryStart + 1).split("#")[0];
+  const params = new URLSearchParams(queryString);
+  const file = params.get("file");
+  if (!file) return null;
+  const chunk = params.get("chunk") || "";
+  return {
+    file,
+    title: file,
+    chunk_id: chunk || undefined
+  };
 }
 
 function groupSessions(sessions) {
