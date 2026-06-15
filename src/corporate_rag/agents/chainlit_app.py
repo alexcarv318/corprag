@@ -6,6 +6,7 @@ from chainlit.data.sql_alchemy import SQLAlchemyDataLayer
 from chainlit.types import ThreadDict
 from langchain_core.runnables import RunnableConfig
 
+from corporate_rag.law_agent.citations import finalize_message
 from corporate_rag.agents.catalog import AgentModeId, starters_for_mode
 from corporate_rag.agents.data_layer import ProductUserSQLAlchemyDataLayer
 from corporate_rag.agents.handoff import (
@@ -157,12 +158,8 @@ async def _finalize_message(
     mode: AgentModeId,
 ) -> None:
     if mode == "law":
-        from corporate_rag.law_agent.citations import finalize_message
-
         await finalize_message(final_message, raw_text)
         return
-
-    from corporate_rag.internal_agent.citations import finalize_message
 
     await finalize_message(final_message, raw_text)
 

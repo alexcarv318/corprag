@@ -15,7 +15,7 @@ function settingsFor({ mode, modelId, agentVersion }) {
     Mode: mode,
     Model: modelId
   };
-  if (mode === "internal") settings.AgentVersion = agentVersion;
+  if (mode === "corporate") settings.AgentVersion = agentVersion;
   return settings;
 }
 
@@ -205,6 +205,19 @@ export function useAgentSession({ api, config }) {
     [api, newChat, refreshThreads, threadId]
   );
 
+  const renameSession = useCallback(
+    async (selectedThreadId, name) => {
+      const trimmed = name.trim();
+      if (!selectedThreadId || !trimmed) return;
+      setThreads((current) => current.map((thread) => (
+        thread.id === selectedThreadId ? { ...thread, title: trimmed } : thread
+      )));
+      await api.renameThread(selectedThreadId, trimmed);
+      await refreshThreads();
+    },
+    [api, refreshThreads]
+  );
+
   return {
     actions,
     activeMode,
@@ -230,6 +243,7 @@ export function useAgentSession({ api, config }) {
     deleteSession,
     newChat,
     refreshThreads,
+    renameSession,
     selectSession,
     sendMessage,
     stop: stopTask

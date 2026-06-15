@@ -6,9 +6,9 @@ from langchain_core.tools import BaseTool, StructuredTool
 from pydantic import BaseModel, Field, create_model
 
 from corporate_rag.agents.tool_output import normalize_tool_outputs
+from corporate_rag.corporate_agent import repository
+from corporate_rag.corporate_agent.prompt import DEFAULT_AGENT_VERSION
 from corporate_rag.graph.interfaces import BaseGraphReader
-from corporate_rag.internal_agent import repository
-from corporate_rag.internal_agent.prompt import DEFAULT_AGENT_VERSION
 from corporate_rag.typeahead.repository import TypeaheadCache, run_typeahead
 from corporate_rag.workflows.engine import WorkflowEngine
 from corporate_rag.workflows.models import Parameter, Workflow, WorkflowResult, WorkflowResultTable
@@ -39,6 +39,10 @@ WORKFLOWS_MODE_TOOL_WHITELIST = frozenset(
         "get_work",
         "read_chunks",
         "entity_mentions",
+        "search_documents_fulltext",
+        "search_chunks_fulltext",
+        "corpus_overview",
+        "list_business_subjects",
         "capital_shareholdings",
         "powers_of_attorney",
         "events_timeline",
@@ -66,9 +70,18 @@ WORKFLOW_TOOL_VIEWS: dict[str, WorkflowToolView] = {
     "find_person": WorkflowToolView("find.person", "person"),
     "find_person_roles": WorkflowToolView("find.person", "person_roles_and_affiliations"),
     "find_documents": WorkflowToolView("documents.search"),
-    "capital_shareholdings": WorkflowToolView("capital.shareholdings"),
-    "powers_of_attorney": WorkflowToolView("governance.poa.register"),
-    "events_timeline": WorkflowToolView("events.timeline"),
+    "capital_shareholdings": WorkflowToolView(
+        "capital.shareholdings",
+        default_params={"include_cancelled": True, "limit": 100},
+    ),
+    "powers_of_attorney": WorkflowToolView(
+        "governance.poa.register",
+        default_params={"include_cancelled": True},
+    ),
+    "events_timeline": WorkflowToolView(
+        "events.timeline",
+        default_params={"include_cancelled": True, "limit": 100},
+    ),
 }
 
 
@@ -105,7 +118,12 @@ def run_workflow_tool(
     view: WorkflowToolView,
     parameters: dict[str, Any],
 ) -> dict[str, Any]:
-    merged = {**view.default_params, **parameters}
+    cleaned_parameters = {
+        key: value
+        for key, value in parameters.items()
+        if value is not None
+    }
+    merged = {**view.default_params, **cleaned_parameters}
     result = engine.run(view.workflow_id, merged)
     table = _select_table(result, view.table_id)
     return {
@@ -175,6 +193,48 @@ def build_langchain_tools(
             limit=limit,
         )
 
+    async def search_documents_fulltext_tool(
+        query: str,
+        limit: int = 20,
+        doc_type: str | None = None,
+        subject_id: str | None = None,
+        signatory_person_id: str | None = None,
+        since: str | None = None,
+        until: str | None = None,
+    ) -> list[dict[str, Any]]:
+        return repository.search_documents_fulltext(
+            graph,
+            query=query,
+            limit=limit,
+            doc_type=doc_type,
+            subject_id=subject_id,
+            signatory_person_id=signatory_person_id,
+            since=since,
+            until=until,
+        )
+
+    async def search_chunks_fulltext_tool(
+        query: str,
+        limit: int = 20,
+        work_id: str | None = None,
+        doc_type: str | None = None,
+        subject_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        return repository.search_chunks_fulltext(
+            graph,
+            query=query,
+            limit=limit,
+            work_id=work_id,
+            doc_type=doc_type,
+            subject_id=subject_id,
+        )
+
+    async def corpus_overview_tool() -> dict[str, int]:
+        return repository.corpus_overview(graph)
+
+    async def list_business_subjects_tool(limit: int = 20) -> list[dict[str, Any]]:
+        return repository.list_business_subjects(graph, limit=limit)
+
     tools: list[BaseTool] = [
         StructuredTool.from_function(
             coroutine=resolve_entity_tool,
@@ -203,6 +263,35 @@ def build_langchain_tools(
             coroutine=read_chunks_tool,
             name="read_chunks",
             description="Read document chunks by inbox file name or chunk ids.",
+        ),
+        StructuredTool.from_function(
+            coroutine=search_documents_fulltext_tool,
+            name="search_documents_fulltext",
+            description=(
+                "BM25 search over document titles and summaries with optional "
+                "doc_type, subject, signatory, and date filters."
+            ),
+        ),
+        StructuredTool.from_function(
+            coroutine=search_chunks_fulltext_tool,
+            name="search_chunks_fulltext",
+            description=(
+                "BM25 search over chunk text with optional work, doc_type, "
+                "and subject filters."
+            ),
+        ),
+        StructuredTool.from_function(
+            coroutine=corpus_overview_tool,
+            name="corpus_overview",
+            description=(
+                "Return corpus-level counts for works, chunks, subjects, "
+                "people, organizations, and events."
+            ),
+        ),
+        StructuredTool.from_function(
+            coroutine=list_business_subjects_tool,
+            name="list_business_subjects",
+            description="List business subjects covered by the corpus with their legal phases.",
         ),
     ]
     for tool_name, view in WORKFLOW_TOOL_VIEWS.items():

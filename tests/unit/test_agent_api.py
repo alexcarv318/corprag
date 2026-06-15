@@ -28,10 +28,10 @@ def test_agent_config_returns_product_ui_contract() -> None:
     assert response.status_code == 200
     payload = response.json()
     assert payload["runtime_path"] == "/agent-runtime"
-    assert payload["default_mode"] == "internal"
+    assert payload["default_mode"] == "corporate"
     assert payload["default_model_id"] == "openai:gpt-4.1"
-    assert {mode["id"] for mode in payload["modes"]} == {"internal", "law"}
-    assert payload["starters"]["internal"]
+    assert {mode["id"] for mode in payload["modes"]} == {"corporate", "law"}
+    assert payload["starters"]["corporate"]
     assert payload["starters"]["law"]
 
 

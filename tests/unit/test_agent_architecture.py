@@ -12,7 +12,12 @@ from corporate_rag.agents.tool_output import (
     reset_tool_event_observer,
     set_tool_event_observer,
 )
-from corporate_rag.internal_agent.tools import build_langchain_tools, tool_whitelist
+from corporate_rag.corporate_agent.tools import (
+    WORKFLOW_TOOL_VIEWS,
+    build_langchain_tools,
+    run_workflow_tool,
+    tool_whitelist,
+)
 from corporate_rag.settings import AgentSettings
 from corporate_rag.typeahead.repository import TypeaheadCache
 from corporate_rag.workflows.catalog import CATALOG
@@ -33,12 +38,16 @@ class DummyTool(BaseTool):
         return "ok"
 
 
-def test_internal_agent_versions_own_tool_policy() -> None:
+def test_corporate_agent_versions_own_tool_policy() -> None:
     assert tool_whitelist("v2.default") is None
     workflows_whitelist = tool_whitelist("v2.workflows")
     assert workflows_whitelist is not None
     assert "resolve_entity" in workflows_whitelist
     assert "find_subject" in workflows_whitelist
+    assert "search_documents_fulltext" in workflows_whitelist
+    assert "search_chunks_fulltext" in workflows_whitelist
+    assert "corpus_overview" in workflows_whitelist
+    assert "list_business_subjects" in workflows_whitelist
     assert "outside_tool" not in workflows_whitelist
 
 
@@ -116,6 +125,38 @@ def test_generated_workflow_tools_accept_catalog_parameters_directly() -> None:
     assert result["columns"]
 
 
+def test_history_workflow_tools_default_to_full_agent_context() -> None:
+    graph = SequencedGraphReader([[{"event": "Capital contribution"}]])
+    engine = WorkflowEngine(graph, catalog=CATALOG)
+
+    result = run_workflow_tool(
+        engine,
+        WORKFLOW_TOOL_VIEWS["capital_shareholdings"],
+        {"subject_id": "subject-aeh", "include_cancelled": None},
+    )
+
+    assert result["parameters"]["subject_id"] == "subject-aeh"
+    assert result["parameters"]["include_cancelled"] is True
+    assert result["parameters"]["limit"] == 100
+
+
+def test_agent_exposes_fulltext_and_corpus_tools() -> None:
+    graph = SequencedGraphReader([])
+    engine = WorkflowEngine(graph, catalog=CATALOG)
+    tools = build_langchain_tools(
+        graph,
+        engine,
+        TypeaheadCache(),
+        agent_version="v2.workflows",
+    )
+    tool_names = {tool.name for tool in tools}
+
+    assert "search_documents_fulltext" in tool_names
+    assert "search_chunks_fulltext" in tool_names
+    assert "corpus_overview" in tool_names
+    assert "list_business_subjects" in tool_names
+
+
 def test_openai_model_initialization_passes_explicit_api_key(monkeypatch: Any) -> None:
     from corporate_rag.agents import model
 
@@ -153,41 +194,41 @@ def test_openai_model_initialization_requires_api_key() -> None:
         raise AssertionError("Expected AgentModelConfigurationError")
 
 
-def test_internal_session_builds_deep_agent(monkeypatch: Any) -> None:
-    from corporate_rag.internal_agent import agent as internal_agent_module
+def test_corporate_session_builds_deep_agent(monkeypatch: Any) -> None:
+    from corporate_rag.corporate_agent import agent as corporate_agent_module
 
     captured: dict[str, Any] = {}
 
     def fake_create_deep_agent(**kwargs: Any) -> dict[str, Any]:
         captured.update(kwargs)
-        return {"agent": "internal"}
+        return {"agent": "corporate"}
 
     async def fake_initialize_chat_model(model_id: str, settings: AgentSettings) -> dict[str, str]:
         del settings
         return {"model": model_id}
 
     monkeypatch.setattr(
-        internal_agent_module,
+        corporate_agent_module,
         "initialize_chat_model",
         fake_initialize_chat_model,
     )
-    monkeypatch.setattr(internal_agent_module, "create_deep_agent", fake_create_deep_agent)
+    monkeypatch.setattr(corporate_agent_module, "create_deep_agent", fake_create_deep_agent)
     monkeypatch.setattr(
-        internal_agent_module,
+        corporate_agent_module,
         "build_langchain_tools",
         lambda *args, **kwargs: [DummyTool(name="find_subject")],
     )
-    monkeypatch.setattr(internal_agent_module, "_deps", lambda: (MagicMock(), MagicMock()))
+    monkeypatch.setattr(corporate_agent_module, "_deps", lambda: (MagicMock(), MagicMock()))
 
     session = asyncio.run(
         build_agent_session(
             AgentSettings(default_model_id="openai:gpt-4.1"),
-            mode="internal",
+            mode="corporate",
             model_id="openai:gpt-4.1",
             agent_version="v2.workflows",
         )
     )
-    assert session.mode == "internal"
+    assert session.mode == "corporate"
     assert captured["name"] == "corprag"
 
 

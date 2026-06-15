@@ -80,7 +80,7 @@ class AgentSettings(BaseSettings):
     secure_handoff_cookie: bool = False
     corporate_mcp_transport: str = "streamable_http"
     corporate_mcp_url: str = "http://127.0.0.1:18800/mcp/"
-    corporate_mcp_command: str = "corporate-rag-internal-mcp"
+    corporate_mcp_command: str = "corporate-rag-corporate-mcp"
     corporate_mcp_args: tuple[str, ...] = ("--transport", "stdio")
     law_mcp_transport: str = "streamable_http"
     law_mcp_url: str = "http://127.0.0.1:18801/mcp/"

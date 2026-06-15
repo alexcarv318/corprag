@@ -186,6 +186,26 @@ function AgentWorkspace({ config, user, onSignOut, theme, setTheme, collapsed, s
 
 function AgentSessionsDrawer({ agent, collapsed, onToggle }) {
   const grouped = groupSessions(agent.sessions);
+  const [editingSessionId, setEditingSessionId] = useState(null);
+  const [renameDraft, setRenameDraft] = useState("");
+
+  function beginRename(session) {
+    setEditingSessionId(session.id);
+    setRenameDraft(session.title);
+  }
+
+  async function commitRename(session) {
+    if (editingSessionId !== session.id) return;
+    const nextTitle = renameDraft.trim();
+    setEditingSessionId(null);
+    if (!nextTitle || nextTitle === session.title) return;
+    await agent.renameSession(session.id, nextTitle);
+  }
+
+  function cancelRename() {
+    setEditingSessionId(null);
+    setRenameDraft("");
+  }
 
   return (
     <aside className={`agent-sessions-drawer${collapsed ? " collapsed" : ""}`}>
@@ -225,20 +245,49 @@ function AgentSessionsDrawer({ agent, collapsed, onToggle }) {
             <div className="agent-session-group-label">{label}</div>
             {sessions.map((session) => (
               <div
-                className={`item agent-session-row${session.id === agent.activeSessionId ? " active" : ""}`}
+                className={`item agent-session-row${session.id === agent.activeSessionId ? " active" : ""}${editingSessionId === session.id ? " editing" : ""}`}
                 key={session.id}
                 title={session.title}
                 onClick={() => agent.selectSession(session.id)}
                 role="button"
                 tabIndex={0}
                 onKeyDown={(event) => {
+                  if (editingSessionId === session.id) return;
                   if (event.key === "Enter" || event.key === " ") agent.selectSession(session.id);
                 }}
               >
                 <span className="workflow-icon"><ChatIcon /></span>
-                <span className="title">{session.title}</span>
+                {editingSessionId === session.id ? (
+                  <input
+                    className="agent-session-rename-input"
+                    value={renameDraft}
+                    autoFocus
+                    onClick={(event) => event.stopPropagation()}
+                    onBlur={() => commitRename(session)}
+                    onChange={(event) => setRenameDraft(event.target.value)}
+                    onKeyDown={(event) => {
+                      event.stopPropagation();
+                      if (event.key === "Enter") commitRename(session);
+                      if (event.key === "Escape") cancelRename();
+                    }}
+                  />
+                ) : (
+                  <span className="title">{session.title}</span>
+                )}
                 <button
-                  className="agent-session-delete"
+                  className="agent-session-action agent-session-rename"
+                  type="button"
+                  title="Rename session"
+                  aria-label="Rename session"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    beginRename(session);
+                  }}
+                >
+                  <RenameIcon />
+                </button>
+                <button
+                  className="agent-session-action agent-session-delete"
                   type="button"
                   title="Delete session"
                   aria-label="Delete session"
@@ -247,7 +296,7 @@ function AgentSessionsDrawer({ agent, collapsed, onToggle }) {
                     agent.deleteSession(session.id);
                   }}
                 >
-                  x
+                  <XIcon />
                 </button>
               </div>
             ))}
@@ -288,7 +337,7 @@ function ModePills({ agent }) {
           type="button"
           onClick={() => agent.setMode(mode.id)}
         >
-          {mode.id === "internal" ? "Internal" : "Law"}
+          {mode.id === "law" ? "Law" : "Corporate"}
         </button>
       ))}
     </div>
@@ -325,10 +374,6 @@ function AgentSettingsPopover({ agent, open }) {
           </select>
         </label>
       ) : null}
-      <div className="agent-status-line">
-        <span className={`agent-status-dot ${agent.connected ? "ok" : ""}`} />
-        {agent.status}
-      </div>
     </div>
   );
 }
@@ -410,6 +455,17 @@ function AgentMessage({ message, onSourceOpen }) {
   const isTool = message.role === "tool";
   const author = isUser ? "" : message.author || "Corprag";
   const messageSources = useMemo(() => sourcesFromContent(message.content), [message.content]);
+  const [copyState, setCopyState] = useState("idle");
+
+  async function copyMessage() {
+    try {
+      await copyText(message.content || "");
+      setCopyState("copied");
+    } catch {
+      setCopyState("failed");
+    }
+    window.setTimeout(() => setCopyState("idle"), 1500);
+  }
 
   return (
     <article className={`agent-message ${message.role}`}>
@@ -419,7 +475,22 @@ function AgentMessage({ message, onSourceOpen }) {
         </div>
       ) : null}
       <div className="agent-message-body">
-        {author ? <div className="agent-message-author">{author}</div> : null}
+        {author ? (
+          <div className="agent-message-head">
+            <div className="agent-message-author">{author}</div>
+            {!isTool ? (
+              <button
+                className={`agent-message-copy${copyState === "copied" ? " copied" : ""}${copyState === "failed" ? " failed" : ""}`}
+                type="button"
+                title={copyState === "copied" ? "Copied" : copyState === "failed" ? "Copy failed" : "Copy message"}
+                aria-label={copyState === "copied" ? "Copied" : copyState === "failed" ? "Copy failed" : "Copy agent message"}
+                onClick={copyMessage}
+              >
+                {copyState === "copied" ? <CheckIcon /> : <CopyIcon />}
+              </button>
+            ) : null}
+          </div>
+        ) : null}
         <div className="agent-message-content">
           {isTool ? <ToolMessage message={message} /> : renderMarkdown(message.content, onSourceOpen, messageSources)}
           {message.streaming ? <span className="agent-caret" /> : null}
@@ -534,7 +605,7 @@ function renderTable(lines, onSourceOpen, messageSources) {
 
 function renderInline(text, onSourceOpen, messageSources = []) {
   const parts = [];
-  const pattern = /(\[([^\]]+)]\(([^)]+)\)|\*\*([^*]+)\*\*|`([^`]+)`)/g;
+  const pattern = /(\[([^\]]+)]\(([^)]+)\)|\[\[cite:([^\]\s]+)\]\]|\*\*([^*]+)\*\*|`([^`]+)`)/g;
   let lastIndex = 0;
   let match = pattern.exec(text);
   while (match) {
@@ -556,9 +627,28 @@ function renderInline(text, onSourceOpen, messageSources = []) {
         </a>
       );
     } else if (match[4]) {
-      parts.push(<strong key={`strong-${match.index}`}>{match[4]}</strong>);
+      const source = sourceFromCitationToken(match[4]);
+      if (source) {
+        const label = citationLabelForSource(source, messageSources);
+        parts.push(
+          <a
+            className="agent-citation-link"
+            href={citationHref(source)}
+            key={`cite-${match.index}-${match[4]}`}
+            title="Open source document"
+            onClick={onSourceOpen ? (event) => {
+              event.preventDefault();
+              onSourceOpen(source, messageSources);
+            } : undefined}
+          >
+            {label}
+          </a>
+        );
+      }
     } else if (match[5]) {
-      parts.push(<code key={`code-${match.index}`}>{match[5]}</code>);
+      parts.push(<strong key={`strong-${match.index}`}>{match[5]}</strong>);
+    } else if (match[6]) {
+      parts.push(<code key={`code-${match.index}`}>{match[6]}</code>);
     }
     lastIndex = pattern.lastIndex;
     match = pattern.exec(text);
@@ -570,10 +660,12 @@ function renderInline(text, onSourceOpen, messageSources = []) {
 function sourcesFromContent(content) {
   const sources = [];
   const seen = new Set();
-  const pattern = /\[([^\]]+)]\(([^)]+)\)/g;
+  const pattern = /\[([^\]]+)]\(([^)]+)\)|\[\[cite:([^\]\s]+)\]\]/g;
   let match = pattern.exec(content || "");
   while (match) {
-    const source = sourceFromCitationHref(match[2]);
+    const source = match[2]
+      ? sourceFromCitationHref(match[2])
+      : sourceFromCitationToken(match[3]);
     if (source) {
       const key = `${source.file}:${source.chunk_id || ""}`;
       if (!seen.has(key)) {
@@ -584,6 +676,33 @@ function sourcesFromContent(content) {
     match = pattern.exec(content || "");
   }
   return sources;
+}
+
+function sourceFromCitationToken(token) {
+  const [fileName, chunkId = ""] = (token || "").split("#", 2);
+  const file = fileName.trim();
+  if (!file) return null;
+  const chunk = chunkId.trim();
+  return {
+    file,
+    title: file,
+    chunk_id: chunk || undefined
+  };
+}
+
+function citationHref(source) {
+  const params = new URLSearchParams({ file: source.file, chunk: source.chunk_id || "" });
+  return `#agent-source?${params.toString()}`;
+}
+
+function citationLabelForSource(source, messageSources = []) {
+  const fileIndex = [];
+  for (const candidate of messageSources) {
+    if (!candidate?.file || fileIndex.includes(candidate.file)) continue;
+    fileIndex.push(candidate.file);
+  }
+  const index = fileIndex.indexOf(source.file);
+  return index >= 0 ? String(index + 1) : source.file;
 }
 
 function sourceFromCitationHref(href) {
@@ -602,6 +721,26 @@ function sourceFromCitationHref(href) {
   };
 }
 
+async function copyText(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.opacity = "0";
+  textarea.style.position = "fixed";
+  document.body.appendChild(textarea);
+  textarea.select();
+  try {
+    document.execCommand("copy");
+  } finally {
+    textarea.remove();
+  }
+}
+
 function groupSessions(sessions) {
   const groups = {};
   const today = new Date();
@@ -618,6 +757,41 @@ function groupSessions(sessions) {
 
 function SearchIcon() {
   return <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.8" /><path d="m20 20-3.7-3.7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>;
+}
+
+function XIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function RenameIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M5 19h4.2L18.4 9.8a2 2 0 0 0 0-2.8L17 5.6a2 2 0 0 0-2.8 0L5 14.8V19Z" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M13.4 6.4l4.2 4.2" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function CopyIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="8" y="8" width="10" height="12" rx="2" stroke="currentColor" strokeWidth="1.7" />
+      <path d="M6 16H5.5A2.5 2.5 0 0 1 3 13.5v-8A2.5 2.5 0 0 1 5.5 3h7A2.5 2.5 0 0 1 15 5.5V6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="m5 12.5 4.4 4.4L19 7.1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
 }
 
 function SettingsIcon() {

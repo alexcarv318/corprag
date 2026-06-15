@@ -70,6 +70,7 @@ services:
       CORPORATE_RAG_AGENT_CORPORATE_MCP_URL: http://mcp-neo4j:8000/mcp/
       CORPORATE_RAG_AGENT_LAW_MCP_TRANSPORT: streamable_http
       CORPORATE_RAG_AGENT_LAW_MCP_URL: http://mcp-neo4j-law:8000/mcp/
+      CHAINLIT_APP_ROOT: /app
     ports:
       - "${CORPORATE_RAG_APP_PORT:-8088}:8088"
     depends_on:

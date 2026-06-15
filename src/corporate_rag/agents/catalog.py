@@ -2,12 +2,12 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from corporate_rag.internal_agent.prompt import DEFAULT_AGENT_VERSION, agent_version_options
+from corporate_rag.corporate_agent.prompt import DEFAULT_AGENT_VERSION, agent_version_options
 from corporate_rag.settings import AgentSettings
 
-AgentModeId = Literal["internal", "law"]
+AgentModeId = Literal["corporate", "law"]
 
-INTERNAL_STARTERS = [
+CORPORATE_STARTERS = [
     ("Current board", "Who is on the board of Acer European Holdings today?"),
     ("Capital contribution", "Find documents about capital contributions in 2022."),
     ("Corpus overview", "What business subjects does this corpus cover?"),
@@ -126,12 +126,12 @@ def model_options(settings: AgentSettings) -> list[tuple[str, str]]:
 
 
 def starters_for_mode(mode: AgentModeId) -> list[AgentStarter]:
-    return _starters(LAW_STARTERS if mode == "law" else INTERNAL_STARTERS)
+    return _starters(LAW_STARTERS if mode == "law" else CORPORATE_STARTERS)
 
 
 def default_chat_settings(settings: AgentSettings) -> dict[str, str]:
     return {
-        "Mode": "internal",
+        "Mode": "corporate",
         "Model": settings.default_model_id,
         "AgentVersion": DEFAULT_AGENT_VERSION,
     }
@@ -140,13 +140,13 @@ def default_chat_settings(settings: AgentSettings) -> dict[str, str]:
 def build_agent_config(settings: AgentSettings) -> AgentConfigResponse:
     return AgentConfigResponse(
         runtime_path=settings.chainlit_mount_path,
-        default_mode="internal",
+        default_mode="corporate",
         default_model_id=settings.default_model_id,
         default_agent_version=DEFAULT_AGENT_VERSION,
         modes=[
             AgentMode(
-                id="internal",
-                label="Corporate archive",
+                id="corporate",
+                label="Corporate",
                 supports_agent_versions=True,
                 supports_citations=True,
             ),
@@ -174,7 +174,7 @@ def build_agent_config(settings: AgentSettings) -> AgentConfigResponse:
             for label, version_id in agent_version_options()
         ],
         starters={
-            "internal": _starters(INTERNAL_STARTERS),
+            "corporate": _starters(CORPORATE_STARTERS),
             "law": _starters(LAW_STARTERS),
         },
     )

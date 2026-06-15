@@ -32,7 +32,7 @@ dev = [
 
 [project.scripts]
 corporate-rag = "corporate_rag.cli:main"
-corporate-rag-internal-mcp = "corporate_rag.internal_agent.mcp:main"
+corporate-rag-corporate-mcp = "corporate_rag.corporate_agent.mcp:main"
 corporate-rag-law-mcp = "corporate_rag.law_agent.mcp:main"
 
 [build-system]
@@ -68,5 +68,5 @@ skip_covered = true
 fail_under = 75
 
 [tool.ruff.lint.per-file-ignores]
-"src/corporate_rag/internal_agent/prompt.py" = ["E501"]
+"src/corporate_rag/corporate_agent/prompt.py" = ["E501"]
 "src/corporate_rag/law_agent/prompt.py" = ["E501"]

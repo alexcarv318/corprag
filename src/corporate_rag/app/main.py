@@ -1,10 +1,10 @@
+# ruff: noqa: E402
 import hashlib
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from chainlit.utils import mount_chainlit
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -159,12 +159,42 @@ def create_app(
 
 
 def _mount_chainlit_runtime(app: FastAPI) -> None:
+    _prepare_chainlit_environment()
+
+    from chainlit.utils import mount_chainlit
+
     agent_config = load_agent_settings()
-    auth_config = load_auth_settings()
-    chainlit_secret = hashlib.sha256(auth_config.secret_key.encode("utf-8")).hexdigest()
-    os.environ.setdefault("CHAINLIT_AUTH_SECRET", chainlit_secret)
+
     # Chainlit persistence is configured explicitly in agents/chainlit_app.py
     # against CORPORATE_RAG_DATABASE_URL.
     os.environ.pop("DATABASE_URL", None)
     target = Path(__file__).resolve().parents[1] / "agents" / "chainlit_app.py"
     mount_chainlit(app=app, target=str(target), path=agent_config.chainlit_mount_path)
+
+
+def _prepare_chainlit_environment() -> None:
+    app_root = _chainlit_app_root()
+    app_root.mkdir(parents=True, exist_ok=True)
+    os.environ["CHAINLIT_APP_ROOT"] = str(app_root)
+    os.environ.setdefault(
+        "CHAINLIT_AUTH_SECRET",
+        hashlib.sha256(load_auth_settings().secret_key.encode()).hexdigest(),
+    )
+
+
+def _chainlit_app_root() -> Path:
+    default_root = Path(__file__).resolve().parents[3] / ".local"
+    raw_root = os.environ.get("CHAINLIT_APP_ROOT")
+    if not raw_root:
+        return default_root
+
+    configured_root = Path(raw_root).expanduser()
+    if not configured_root.is_absolute():
+        return default_root
+    if configured_root == Path("/app") and not Path("/.dockerenv").exists():
+        return default_root
+    try:
+        configured_root.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        return default_root
+    return configured_root

@@ -1,8 +1,8 @@
 from mcp.server.fastmcp import FastMCP
 
-from corporate_rag.internal_agent import repository
-from corporate_rag.internal_agent.agent import _deps
-from corporate_rag.internal_agent.tools import (
+from corporate_rag.corporate_agent import repository
+from corporate_rag.corporate_agent.agent import _deps
+from corporate_rag.corporate_agent.tools import (
     WORKFLOW_TOOL_VIEWS,
     WorkflowToolView,
     resolve_entity,
@@ -16,7 +16,7 @@ _cache = TypeaheadCache()
 def build_server(*, host: str = "127.0.0.1", port: int = 18800) -> FastMCP:
     graph, engine = _deps()
     server = FastMCP(
-        name="corporate-rag-internal-agent",
+        name="corporate-rag-corporate-agent",
         host=host,
         port=port,
         json_response=True,
@@ -63,6 +63,52 @@ def build_server(*, host: str = "127.0.0.1", port: int = 18800) -> FastMCP:
             chunk_ids=chunk_ids or [],
             limit=limit,
         )
+
+    @server.tool(name="search_documents_fulltext")
+    def search_documents_fulltext_tool(
+        query: str,
+        limit: int = 20,
+        doc_type: str | None = None,
+        subject_id: str | None = None,
+        signatory_person_id: str | None = None,
+        since: str | None = None,
+        until: str | None = None,
+    ) -> list[dict[str, object]]:
+        return repository.search_documents_fulltext(
+            graph,
+            query=query,
+            limit=limit,
+            doc_type=doc_type,
+            subject_id=subject_id,
+            signatory_person_id=signatory_person_id,
+            since=since,
+            until=until,
+        )
+
+    @server.tool(name="search_chunks_fulltext")
+    def search_chunks_fulltext_tool(
+        query: str,
+        limit: int = 20,
+        work_id: str | None = None,
+        doc_type: str | None = None,
+        subject_id: str | None = None,
+    ) -> list[dict[str, object]]:
+        return repository.search_chunks_fulltext(
+            graph,
+            query=query,
+            limit=limit,
+            work_id=work_id,
+            doc_type=doc_type,
+            subject_id=subject_id,
+        )
+
+    @server.tool(name="corpus_overview")
+    def corpus_overview_tool() -> dict[str, int]:
+        return repository.corpus_overview(graph)
+
+    @server.tool(name="list_business_subjects")
+    def list_business_subjects_tool(limit: int = 20) -> list[dict[str, object]]:
+        return repository.list_business_subjects(graph, limit=limit)
 
     for tool_name, view in WORKFLOW_TOOL_VIEWS.items():
         workflow = engine.get_workflow(view.workflow_id)

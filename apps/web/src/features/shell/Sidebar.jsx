@@ -17,9 +17,7 @@ export default function Sidebar({ catalog, selected, onSelect, collapsed, onTogg
     <aside>
       <div className="sidebar-head">
         <div className="sidebar-head-row">
-          <h1 className="sidebar-title">
-            Workflows <span className="sub" id="catalog-stats">({(catalog.workflows || []).filter((workflow) => !workflow.dev_only).length})</span>
-          </h1>
+          <h1 className="sidebar-title">Workflows</h1>
           <button
             id="sidebar-toggle"
             className="sidebar-toggle"

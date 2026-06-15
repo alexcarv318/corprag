@@ -3,10 +3,10 @@ from langgraph.checkpoint.memory import InMemorySaver
 
 from corporate_rag.agents.model import initialize_chat_model
 from corporate_rag.agents.session import AgentSession
+from corporate_rag.corporate_agent.prompt import DEFAULT_AGENT_VERSION, system_prompt
+from corporate_rag.corporate_agent.tools import build_langchain_tools
 from corporate_rag.graph.interfaces import BaseGraphReader
 from corporate_rag.graph.neo4j_client import build_corporate_graph_client
-from corporate_rag.internal_agent.prompt import DEFAULT_AGENT_VERSION, system_prompt
-from corporate_rag.internal_agent.tools import build_langchain_tools
 from corporate_rag.settings import AgentSettings, load_neo4j_settings
 from corporate_rag.typeahead.repository import TypeaheadCache
 from corporate_rag.workflows.catalog import CATALOG
@@ -41,7 +41,7 @@ async def build_session(
     )
     return AgentSession(
         agent=agent,
-        mode="internal",
+        mode="corporate",
         model_id=model_id,
         tools=tools,
         agent_version=chosen_version,

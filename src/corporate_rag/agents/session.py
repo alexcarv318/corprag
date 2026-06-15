@@ -6,7 +6,7 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_core.tools import BaseTool
 
 from corporate_rag.agents.catalog import AgentModeId, default_chat_settings
-from corporate_rag.internal_agent.prompt import DEFAULT_AGENT_VERSION
+from corporate_rag.corporate_agent.prompt import DEFAULT_AGENT_VERSION
 from corporate_rag.settings import AgentSettings, load_agent_settings
 
 
@@ -31,9 +31,9 @@ async def build_agent_session(
 
         return await build_law_session(settings, model_id=model_id)
 
-    from corporate_rag.internal_agent.agent import build_session as build_internal_session
+    from corporate_rag.corporate_agent.agent import build_session as build_corporate_session
 
-    return await build_internal_session(
+    return await build_corporate_session(
         settings,
         model_id=model_id,
         agent_version=agent_version,
@@ -42,7 +42,7 @@ async def build_agent_session(
 
 def current_mode() -> AgentModeId:
     mode = current_settings().get("Mode")
-    return cast(AgentModeId, mode) if mode in {"internal", "law"} else "internal"
+    return cast(AgentModeId, mode) if mode in {"corporate", "law"} else "corporate"
 
 
 def remember_chat_settings(settings: dict[str, Any]) -> dict[str, Any]:
@@ -71,7 +71,7 @@ async def set_agent_session(
 ) -> AgentSession:
     settings = load_agent_settings()
     chosen_mode: AgentModeId = (
-        cast(AgentModeId, mode) if mode in {"internal", "law"} else current_mode()
+        cast(AgentModeId, mode) if mode in {"corporate", "law"} else current_mode()
     )
     chosen_model_id = model_id or settings.default_model_id
     chosen_agent_version = agent_version or DEFAULT_AGENT_VERSION
