@@ -1,5 +1,5 @@
 import { StructuredValue } from "../shared/StructuredValue.jsx";
-import { decodeText, displayOptionValue, isBlank } from "../shared/displayUtils.js";
+import { decodeText, displayOptionValue, formatInlineStructuredValue, isBlank } from "../shared/displayUtils.js";
 import { evidenceColumnKind } from "./tableUtils.js";
 import { evidenceEntityId, isSourcesColumn, rowContext, sourceFiles } from "../shared/resultUtils.js";
 import { cellWidthStyle } from "./resultTableLayout.js";
@@ -25,28 +25,34 @@ export default function ResultCell({ column, value, row, columns, columnWidth, o
     return (
       <td className="evidence-cell" style={style}>
         <div className="evidence-chips">
-          {values.map((entry) => (
-            <button
-              className="evidence-value"
-              key={String(entry)}
-              type="button"
-              title="Check the source evidence for this value"
-              onClick={(event) => {
-                event.stopPropagation();
-                onEvidence({
-                  value: String(entry),
-                  column,
-                  files: sourceFiles(row),
-                  entity_id: evidenceEntityId(row),
-                  context: rowContext(row, columns),
-                  limit: 30
-                });
-              }}
-            >
-              {String(entry)}
-              <span className="evidence-icon" dangerouslySetInnerHTML={{ __html: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>' }} />
-            </button>
-          ))}
+          {values.map((entry) => {
+            const evidenceText = evidenceValueText(entry);
+            const structured = isStructuredEvidenceValue(entry);
+            return (
+              <button
+                className={`evidence-value${structured ? " structured-evidence-value" : ""}`}
+                key={evidenceText}
+                type="button"
+                title="Check the source evidence for this value"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onEvidence({
+                    value: evidenceText,
+                    column,
+                    files: sourceFiles(row),
+                    entity_id: evidenceEntityId(row),
+                    context: rowContext(row, columns),
+                    limit: 30
+                  });
+                }}
+              >
+                <span className="evidence-value-content">
+                  {structured ? <StructuredValue value={entry} /> : decodeText(entry)}
+                </span>
+                <span className="evidence-icon" dangerouslySetInnerHTML={{ __html: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>' }} />
+              </button>
+            );
+          })}
         </div>
       </td>
     );
@@ -56,3 +62,16 @@ export default function ResultCell({ column, value, row, columns, columnWidth, o
   return <td className="structured-cell" style={style}><StructuredValue value={value} /></td>;
 }
 
+function isStructuredEvidenceValue(value) {
+  return Boolean(value) && typeof value === "object";
+}
+
+function evidenceValueText(value) {
+  const formatted = formatInlineStructuredValue(value);
+  if (formatted) return formatted;
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}

@@ -64,27 +64,6 @@
   body.workflow-sidebar-collapsed {
     grid-template-columns: 52px 1fr;
   }
-  body.workflow-sources-open {
-    grid-template-columns: var(--sidebar-width) minmax(0, 1fr) calc(var(--sidebar-width) * 1.5);
-    grid-template-areas: "side main sources";
-  }
-  body.workflow-sources-opening {
-    grid-template-columns: var(--sidebar-width) minmax(0, 1fr) 0;
-    grid-template-areas: "side main sources";
-  }
-  body.workflow-sources-closing {
-    grid-template-columns: var(--sidebar-width) minmax(0, 1fr) 0;
-    grid-template-areas: "side main sources";
-  }
-  body.workflow-sidebar-collapsed.workflow-sources-open {
-    grid-template-columns: 52px minmax(0, 1fr) calc(var(--sidebar-width) * 1.5);
-  }
-  body.workflow-sidebar-collapsed.workflow-sources-opening {
-    grid-template-columns: 52px minmax(0, 1fr) 0;
-  }
-  body.workflow-sidebar-collapsed.workflow-sources-closing {
-    grid-template-columns: 52px minmax(0, 1fr) 0;
-  }
 
   /* Themed scrollbars so the chrome of every scroll surface in the app
      blends with the panel/border palette instead of falling back to the
@@ -256,11 +235,6 @@
     padding: 72px 28px 44px;
     background: var(--main-bg);
     position: relative;
-  }
-  body.workflow-sources-open main .top-actions,
-  body.workflow-sources-opening main .top-actions,
-  body.workflow-sources-closing main .top-actions {
-    position: absolute;
   }
   .top-actions {
     position: fixed;
@@ -2382,6 +2356,25 @@
     cursor: pointer;
     transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease;
   }
+  .evidence-value-content {
+    min-width: 0;
+  }
+  .evidence-value.structured-evidence-value {
+    align-items: flex-start;
+    border-radius: 8px;
+    padding: 6px 8px;
+    white-space: normal;
+  }
+  .evidence-value.structured-evidence-value .structured-list {
+    gap: 6px;
+    min-width: 0;
+  }
+  .evidence-value.structured-evidence-value .structured-main {
+    line-height: 1.35;
+  }
+  .evidence-value.structured-evidence-value .structured-meta {
+    font-size: 11.5px;
+  }
   .evidence-value:hover {
     border-color: var(--accent);
     color: var(--accent);
@@ -2442,26 +2435,6 @@
     align-items: center;
     gap: 6px;
     flex-shrink: 0;
-  }
-  .workflow-sources-drawer {
-    bottom: auto;
-    box-shadow: none;
-    grid-area: sources;
-    height: 100vh;
-    position: relative;
-    right: auto;
-    top: auto;
-    transform: none;
-    width: auto;
-    z-index: 80;
-  }
-  .workflow-sources-drawer:not(.open) {
-    opacity: 0;
-    overflow: hidden;
-  }
-  .workflow-sources-drawer.open {
-    opacity: 1;
-    transform: none;
   }
   .sources-drawer .source-drawer-heading {
     min-width: 0;

@@ -32,7 +32,6 @@ export default function WorkflowConsole({ user, onSignOut }) {
     executeWorkflow
   } = useWorkflowSession({ showCancelled, setShowCancelled });
   const { drawer, openDocument, openEvidence, openSources, closeDrawer, backToSources } = useSourceDrawer();
-  const [sourceLayoutState, setSourceLayoutState] = useState("closed");
   const showsDataModelGuide = workflow?.workflow_id === "data_model.guide";
 
   useEffect(() => {
@@ -41,28 +40,6 @@ export default function WorkflowConsole({ user, onSignOut }) {
     document.body.classList.toggle("workflow-sidebar-collapsed", collapsed);
     return () => document.body.classList.remove("workflow-sidebar-collapsed");
   }, [collapsed]);
-
-  useEffect(() => {
-    if (drawer) {
-      setSourceLayoutState((current) => (current === "open" ? "open" : "opening"));
-      const frame = window.requestAnimationFrame(() => setSourceLayoutState("open"));
-      return () => window.cancelAnimationFrame(frame);
-    }
-    setSourceLayoutState((current) => (current === "open" || current === "opening" ? "closing" : "closed"));
-    const timeout = window.setTimeout(() => setSourceLayoutState("closed"), 180);
-    return () => window.clearTimeout(timeout);
-  }, [drawer]);
-
-  useEffect(() => {
-    document.body.classList.toggle("workflow-sources-open", sourceLayoutState === "open");
-    document.body.classList.toggle("workflow-sources-opening", sourceLayoutState === "opening");
-    document.body.classList.toggle("workflow-sources-closing", sourceLayoutState === "closing");
-    return () => {
-      document.body.classList.remove("workflow-sources-open");
-      document.body.classList.remove("workflow-sources-opening");
-      document.body.classList.remove("workflow-sources-closing");
-    };
-  }, [sourceLayoutState]);
 
   return (
     <>
@@ -112,7 +89,6 @@ export default function WorkflowConsole({ user, onSignOut }) {
         </div>
       </main>
       <DocumentSourceDrawer
-        className="workflow-sources-drawer"
         drawer={drawer}
         onBack={backToSources}
         onClose={closeDrawer}
