@@ -568,7 +568,6 @@ aside .item.agent-session-row .workflow-icon svg {
 }
 
 .agent-composer {
-  background: var(--bg-elev-2);
   border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
   border-radius: 22px;
   display: grid;
@@ -577,6 +576,14 @@ aside .item.agent-session-row .workflow-icon svg {
   max-width: 874px;
   padding: 12px 14px 14px;
   width: calc(100% - 48px);
+}
+
+html[data-theme="light"] > .agent-composer {
+  background: var(--sidebar-bg);
+}
+
+html[data-theme="dark"] > .agent-composer {
+  background: var(--bg-elev-2);
 }
 
 .agent-composer textarea {

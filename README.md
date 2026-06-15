@@ -16,10 +16,16 @@ The first slice only provides the backend application shell:
 uv sync --extra dev
 ```
 
-## Run
+## Run backend
 
 ```bash
-uv run corporate-rag serve --host 127.0.0.1 --port 8088
+docker compose -f docker-compose.yml up --build
+```
+
+## Run frontend
+
+```bash
+make dev-web
 ```
 
 Health check:
@@ -27,6 +33,8 @@ Health check:
 ```bash
 curl http://127.0.0.1:8088/health
 ```
+
+Access frontend at http://127.0.0.1:5173/
 
 ## Checks
 
