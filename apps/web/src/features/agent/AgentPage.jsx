@@ -97,7 +97,7 @@ function AgentWorkspace({ config, user, onSignOut, theme, setTheme, menuOpen, se
             <AgentWelcome agent={agent} />
           ) : (
             <>
-              {agent.messages.map((message) => <AgentMessage key={message.id} message={message} />)}
+              <ConversationMessages messages={agent.messages} running={agent.running} />
               <AgentTaskLists tasklists={agent.tasklists} />
             </>
           )}
@@ -132,10 +132,11 @@ function AgentWorkspace({ config, user, onSignOut, theme, setTheme, menuOpen, se
               <button className="agent-stop-button" type="button" onClick={agent.stop} title="Stop" aria-label="Stop">
                 <StopIcon />
               </button>
-            ) : null}
-            <button className="agent-send-button" type="submit" disabled={!draft.trim() || agent.running || !agent.connected}>
-              <ArrowUpIcon />
-            </button>
+            ) : (
+              <button className="agent-send-button" type="submit" disabled={!draft.trim() || !agent.connected}>
+                <ArrowUpIcon />
+              </button>
+            )}
           </div>
         </form>
         <div className="agent-disclaimer">Corprag can make mistakes. Check important info.</div>
@@ -283,6 +284,78 @@ function AgentSettingsPopover({ agent, open }) {
   );
 }
 
+function ConversationMessages({ messages, running }) {
+  const turns = groupMessagesByTurn(messages);
+  return turns.map((turn, index) => (
+    <div className="agent-turn" key={turn.id}>
+      {turn.user ? <AgentMessage message={turn.user} /> : null}
+      {turn.tools.length ? <ToolActivityGroup tools={turn.tools} active={running && index === turns.length - 1} /> : null}
+      {turn.assistants.map((message) => <AgentMessage key={message.id} message={message} />)}
+      {turn.orphans.map((message) => <AgentMessage key={message.id} message={message} />)}
+    </div>
+  ));
+}
+
+function ToolActivityGroup({ tools, active }) {
+  const running = active || tools.some((tool) => tool.streaming);
+
+  return (
+    <details className={`agent-tool-activity${running ? " running" : ""}`}>
+      <summary>
+        <span className="agent-message-avatar" aria-hidden="true">A</span>
+        <span className="agent-tool-activity-label">{running ? "Using tools" : "Used tools"}</span>
+      </summary>
+      <div className="agent-tool-activity-body">
+        {tools.map((message) => <AgentMessage key={message.id} message={message} />)}
+      </div>
+    </details>
+  );
+}
+
+function groupMessagesByTurn(messages) {
+  const turns = [];
+  let current = null;
+
+  const ensureTurn = (message) => {
+    if (!current) {
+      current = {
+        id: `turn-${message.id}`,
+        user: null,
+        tools: [],
+        assistants: [],
+        orphans: []
+      };
+      turns.push(current);
+    }
+    return current;
+  };
+
+  for (const message of messages) {
+    if (message.role === "user") {
+      current = {
+        id: `turn-${message.id}`,
+        user: message,
+        tools: [],
+        assistants: [],
+        orphans: []
+      };
+      turns.push(current);
+      continue;
+    }
+
+    const turn = ensureTurn(message);
+    if (message.role === "tool") {
+      turn.tools.push(message);
+    } else if (message.role === "assistant") {
+      turn.assistants.push(message);
+    } else {
+      turn.orphans.push(message);
+    }
+  }
+
+  return turns;
+}
+
 function AgentMessage({ message }) {
   const isUser = message.role === "user";
   const isTool = message.role === "tool";
@@ -311,7 +384,7 @@ function ToolMessage({ message }) {
   return (
     <details className="agent-tool-card" open={message.streaming}>
       <summary>{headline || message.author || "Tool activity"}</summary>
-      {details.length ? <pre>{details.join("\n")}</pre> : null}
+      {details.length && <pre>{details.join("\n")}</pre>}
     </details>
   );
 }

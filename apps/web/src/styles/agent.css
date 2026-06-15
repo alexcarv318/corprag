@@ -136,6 +136,10 @@ aside .item.agent-session-row .title {
   width: 100%;
 }
 
+.agent-turn {
+  display: contents;
+}
+
 .agent-welcome {
   align-self: center;
   margin-top: min(16vh, 130px);
@@ -324,6 +328,54 @@ aside .item.agent-session-row .title {
   margin: 8px 0 0;
   overflow: auto;
   white-space: pre-wrap;
+}
+
+.agent-tool-activity {
+  display: grid;
+  max-width: 760px;
+}
+
+.agent-tool-activity summary {
+  align-items: center;
+  color: var(--fg);
+  cursor: pointer;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 24px minmax(0, 1fr);
+  list-style: none;
+  width: 100%;
+}
+
+.agent-tool-activity summary::-webkit-details-marker {
+  display: none;
+}
+
+.agent-tool-activity-label {
+  color: var(--fg-dim);
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 30px;
+  width: fit-content;
+}
+
+.agent-tool-activity summary:hover .agent-tool-activity-label {
+  color: var(--fg);
+}
+
+.agent-tool-activity.running .agent-tool-activity-label {
+  animation: agent-tool-glow 1.15s ease-in-out infinite;
+  color: var(--fg);
+}
+
+.agent-tool-activity-body {
+  display: grid;
+  gap: 10px;
+  overflow: hidden;
+  padding-top: 10px;
+}
+
+.agent-tool-activity-body .agent-message.tool {
+  animation: agent-tool-reveal 160ms ease;
 }
 
 .agent-caret {
@@ -538,6 +590,28 @@ aside .item.agent-session-row .title {
   50% { opacity: 0; }
 }
 
+@keyframes agent-tool-glow {
+  0%, 100% {
+    text-shadow: 0 0 0 transparent;
+  }
+
+  50% {
+    text-shadow: 0 0 12px color-mix(in srgb, var(--accent) 75%, transparent);
+  }
+}
+
+@keyframes agent-tool-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (max-width: 900px) {
   body:has(.agent-page-main) {
     grid-template-columns: 1fr;
@@ -557,5 +631,9 @@ aside .item.agent-session-row .title {
 
   .agent-composer {
     width: calc(100% - 24px);
+  }
+
+  .agent-tool-activity {
+    margin-left: 0;
   }
 }
