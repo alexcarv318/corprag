@@ -83,7 +83,7 @@ export function useSourceDrawer() {
           return {
             ...source,
             doc_type: source.doc_type || document.doc_type,
-            title: source.title === source.file ? document.title || source.title : source.title,
+            title: !source.title || source.title === source.file ? document.title || source.title || source.file : source.title,
             file: source.file
           };
         })

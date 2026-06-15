@@ -1,10 +1,11 @@
 import { StructuredValue } from "../shared/StructuredValue.jsx";
 import { decodeText, displayOptionValue, formatInlineStructuredValue, isBlank } from "../shared/displayUtils.js";
 import { evidenceColumnKind } from "./tableUtils.js";
+import { isEvidenceCellDisabled } from "../shared/evidenceColumns.js";
 import { evidenceEntityId, isSourcesColumn, rowContext, sourceFiles } from "../shared/resultUtils.js";
 import { cellWidthStyle } from "./resultTableLayout.js";
 
-export default function ResultCell({ column, value, row, columns, columnWidth, onSources, onEvidence }) {
+export default function ResultCell({ column, value, row, columns, columnWidth, tableId, onSources, onEvidence }) {
   const style = cellWidthStyle(columnWidth);
   if (isSourcesColumn(column) && Array.isArray(value)) {
     if (!value.length) return <td className="sources-empty" style={style}>—</td>;
@@ -20,7 +21,7 @@ export default function ResultCell({ column, value, row, columns, columnWidth, o
   }
   if (isBlank(value)) return <td className="json" style={style}>—</td>;
   if (column === "doc_type" || column === "supporting_doc_type" || column === "source_doc_type") return <td style={style}>{displayOptionValue(value)}</td>;
-  if (evidenceColumnKind(column) && sourceFiles(row).length) {
+  if (!isEvidenceCellDisabled(tableId, column) && evidenceColumnKind(column) && sourceFiles(row).length) {
     const values = Array.isArray(value) ? value : [value];
     return (
       <td className="evidence-cell" style={style}>

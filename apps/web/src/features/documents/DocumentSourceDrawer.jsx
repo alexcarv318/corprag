@@ -1,19 +1,33 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { displayOptionValue } from "../workflows/shared/displayUtils.js";
 import DocumentView from "./DocumentView.jsx";
 
 export default function DocumentSourceDrawer({ drawer, onClose, onBack, onOpenDocument, className = "" }) {
   const [visibleDrawer, setVisibleDrawer] = useState(drawer);
-  const open = Boolean(drawer);
+  const [renderedOpen, setRenderedOpen] = useState(Boolean(drawer));
+  const mountedRef = useRef(Boolean(drawer));
+  const open = renderedOpen;
   const title = visibleDrawer?.title || "Sources";
 
   useEffect(() => {
     if (drawer) {
       setVisibleDrawer(drawer);
-      return undefined;
+      if (mountedRef.current) {
+        setRenderedOpen(true);
+        return undefined;
+      }
+      mountedRef.current = true;
+      setRenderedOpen(false);
+      const timeout = window.setTimeout(() => setRenderedOpen(true), 30);
+      return () => window.clearTimeout(timeout);
     }
-    const timeout = window.setTimeout(() => setVisibleDrawer(null), 180);
+
+    setRenderedOpen(false);
+    const timeout = window.setTimeout(() => {
+      mountedRef.current = false;
+      setVisibleDrawer(null);
+    }, 240);
     return () => window.clearTimeout(timeout);
   }, [drawer]);
 

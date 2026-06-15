@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
-export default function FilterPopover({ anchorElement, anchorRect, column, filters, options, onApply, onClear, onClose }) {
+export default function FilterPopover({ anchorElement, column, filters, options, onApply, onClear, onClose }) {
   const popoverRef = useRef(null);
   const [query, setQuery] = useState("");
   const [draft, setDraft] = useState(() => new Set(filters[column] || options.map((option) => option.value)));
+  const [style, setStyle] = useState(undefined);
 
   useEffect(() => {
     setDraft(new Set(filters[column] || options.map((option) => option.value)));
@@ -26,13 +27,30 @@ export default function FilterPopover({ anchorElement, anchorRect, column, filte
     };
   }, [anchorElement, onClose]);
 
+  useLayoutEffect(() => {
+    function updatePosition() {
+      if (!anchorElement || !popoverRef.current) return;
+      const anchorRect = anchorElement.getBoundingClientRect();
+      const popoverWidth = popoverRef.current.offsetWidth || 280;
+      const top = Math.min(anchorRect.bottom + 6, window.innerHeight - 12);
+      const desiredLeft = anchorRect.right - popoverWidth;
+      const maxLeft = window.innerWidth - popoverWidth - 8;
+      setStyle({
+        left: Math.max(8, Math.min(desiredLeft, maxLeft)),
+        top
+      });
+    }
+
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [anchorElement]);
+
   const filteredOptions = options.filter((option) => option.label.toLowerCase().includes(query.trim().toLowerCase()));
-  const style = anchorRect
-    ? {
-        left: Math.min(anchorRect.left + window.scrollX, window.scrollX + window.innerWidth - 280),
-        top: anchorRect.bottom + window.scrollY + 6
-      }
-    : undefined;
 
   function setAll(nextOptions, checked) {
     setDraft((current) => {
@@ -86,4 +104,3 @@ export default function FilterPopover({ anchorElement, anchorRect, column, filte
     </div>
   );
 }
-

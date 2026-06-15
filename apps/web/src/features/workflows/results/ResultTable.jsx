@@ -27,7 +27,7 @@ function filterOptionsForColumn(rows, filters, column) {
     });
 }
 
-export default function ResultTable({ columns, rows, rowCount, tableTitle, onSources, onEvidence }) {
+export default function ResultTable({ columns, rows, rowCount, tableId, tableTitle, onSources, onEvidence }) {
   const [sort, setSort] = useState({ column: null, direction: 0 });
   const [filters, setFilters] = useState({});
   const [activeFilter, setActiveFilter] = useState(null);
@@ -168,14 +168,12 @@ export default function ResultTable({ columns, rows, rowCount, tableTitle, onSou
                       onClick={(event) => {
                         event.stopPropagation();
                         const anchorElement = event.currentTarget;
-                        const anchorRect = anchorElement.getBoundingClientRect();
                         setActiveFilter((current) => (
                           current?.column === column
                             ? null
                             : {
                                 column,
-                                anchorElement,
-                                anchorRect
+                                anchorElement
                               }
                         ));
                       }}
@@ -204,6 +202,7 @@ export default function ResultTable({ columns, rows, rowCount, tableTitle, onSou
                     columns={columns}
                     key={column}
                     row={row}
+                    tableId={tableId}
                     value={row[column]}
                     onSources={onSources}
                     onEvidence={onEvidence}
@@ -217,7 +216,6 @@ export default function ResultTable({ columns, rows, rowCount, tableTitle, onSou
       {activeFilter ? (
         <FilterPopover
           anchorElement={activeFilter.anchorElement}
-          anchorRect={activeFilter.anchorRect}
           column={activeFilter.column}
           filters={filters}
           onApply={applyFilter}

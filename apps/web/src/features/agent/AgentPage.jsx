@@ -72,35 +72,12 @@ function AgentWorkspace({ config, user, onSignOut, theme, setTheme, collapsed, s
   const threadRef = useRef(null);
   const textareaRef = useRef(null);
   const { drawer, openDocument, openSources, closeDrawer, backToSources } = useSourceDrawer();
-  const [sourceLayoutState, setSourceLayoutState] = useState("closed");
 
   useEffect(() => {
     document.body.classList.remove("workflow-sidebar-collapsed");
     document.body.classList.toggle("agent-sidebar-collapsed", collapsed);
     return () => document.body.classList.remove("agent-sidebar-collapsed");
   }, [collapsed]);
-
-  useEffect(() => {
-    if (drawer) {
-      setSourceLayoutState((current) => (current === "open" ? "open" : "opening"));
-      const frame = window.requestAnimationFrame(() => setSourceLayoutState("open"));
-      return () => window.cancelAnimationFrame(frame);
-    }
-    setSourceLayoutState((current) => (current === "open" || current === "opening" ? "closing" : "closed"));
-    const timeout = window.setTimeout(() => setSourceLayoutState("closed"), 180);
-    return () => window.clearTimeout(timeout);
-  }, [drawer]);
-
-  useEffect(() => {
-    document.body.classList.toggle("agent-sources-open", sourceLayoutState === "open");
-    document.body.classList.toggle("agent-sources-opening", sourceLayoutState === "opening");
-    document.body.classList.toggle("agent-sources-closing", sourceLayoutState === "closing");
-    return () => {
-      document.body.classList.remove("agent-sources-open");
-      document.body.classList.remove("agent-sources-opening");
-      document.body.classList.remove("agent-sources-closing");
-    };
-  }, [sourceLayoutState]);
 
   useEffect(() => {
     threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: "smooth" });
@@ -198,7 +175,6 @@ function AgentWorkspace({ config, user, onSignOut, theme, setTheme, collapsed, s
         <div className="agent-disclaimer">Corprag can make mistakes. Check important info.</div>
       </main>
       <DocumentSourceDrawer
-        className="agent-sources-drawer"
         drawer={drawer}
         onBack={backToSources}
         onClose={closeDrawer}

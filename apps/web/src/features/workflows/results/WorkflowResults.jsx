@@ -16,9 +16,8 @@ export default function WorkflowResults({ result, onSources, onEvidence }) {
         const columns = visibleColumns(table.columns || []);
         const rows = table.rows || [];
         const rowCount = typeof table.row_count === "number" ? table.row_count : rows.length;
-        return <ResultTable columns={columns} key={table.table_id || index} rowCount={rowCount} rows={rows} tableTitle={table.title || `Table ${index + 1}`} onSources={onSources} onEvidence={onEvidence} />;
+        return <ResultTable columns={columns} key={table.table_id || index} rowCount={rowCount} rows={rows} tableId={table.table_id || ""} tableTitle={table.title || `Table ${index + 1}`} onSources={onSources} onEvidence={onEvidence} />;
       })}
     </div>
   );
 }
-

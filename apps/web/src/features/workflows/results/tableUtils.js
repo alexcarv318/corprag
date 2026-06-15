@@ -1,4 +1,4 @@
-import { ALWAYS_HIDDEN_COLUMNS, EVIDENCE_DATE_COLUMNS, EVIDENCE_NUMBER_COLUMNS, EVIDENCE_TEXT_COLUMNS } from "../shared/evidenceColumns.js";
+import { ALWAYS_HIDDEN_COLUMNS, EVIDENCE_DATE_COLUMNS, EVIDENCE_DATE_SUFFIXES, EVIDENCE_NUMBER_COLUMNS, EVIDENCE_TEXT_COLUMNS } from "../shared/evidenceColumns.js";
 import { decodeText, isBlank } from "../shared/displayUtils.js";
 
 export function resultTables(result) {
@@ -24,7 +24,8 @@ export function evidenceColumnKind(columnName) {
   if (EVIDENCE_DATE_COLUMNS.has(name)) return "date";
   if (EVIDENCE_NUMBER_COLUMNS.has(name)) return "number";
   if (EVIDENCE_TEXT_COLUMNS.has(name)) return "text";
-  if (name.startsWith("date_") || name.includes("valid_") || name.endsWith("_date")) return "date";
+  if (name.startsWith("date_") || name.includes("valid_")) return "date";
+  if (EVIDENCE_DATE_SUFFIXES.some((suffix) => name.endsWith(suffix))) return "date";
   return null;
 }
 
