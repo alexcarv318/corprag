@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { DataModelGuide } from "../dataModel/DataModelGuide.jsx";
 import DocumentSourceDrawer from "../documents/DocumentSourceDrawer.jsx";
@@ -24,7 +24,6 @@ export default function WorkflowConsole({ user, onSignOut }) {
     parameters,
     parameterLabels,
     result,
-    serverStatus,
     runStatus,
     running,
     documentCount,
@@ -35,6 +34,12 @@ export default function WorkflowConsole({ user, onSignOut }) {
   const { drawer, openDocument, openEvidence, openSources, closeDrawer, backToSources } = useSourceDrawer();
   const showsDataModelGuide = workflow?.workflow_id === "data_model.guide";
 
+  useEffect(() => {
+    document.body.classList.remove("agent-sidebar-collapsed");
+    document.body.classList.toggle("workflow-sidebar-collapsed", collapsed);
+    return () => document.body.classList.remove("workflow-sidebar-collapsed");
+  }, [collapsed]);
+
   return (
     <>
       <DisclaimerOverlay open={disclaimerOpen} count={documentCount} onClose={() => setDisclaimerOpen(false)} />
@@ -42,7 +47,6 @@ export default function WorkflowConsole({ user, onSignOut }) {
         catalog={catalog}
         collapsed={collapsed}
         selected={selectedId}
-        status={serverStatus}
         onSelect={setSelectedId}
         onToggle={() => setCollapsed(!collapsed)}
       />

@@ -8,13 +8,16 @@ export function useAppPreferences() {
   const [showCancelled, setShowCancelled] = useState(() => storageBool(GLOBAL_CANCEL_KEY));
 
   useEffect(() => {
+    document.body.classList.remove("sidebar-collapsed");
+  }, []);
+
+  useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
     document.documentElement.style.colorScheme = theme;
     saveTheme(theme);
   }, [theme]);
 
   useEffect(() => {
-    document.body.classList.toggle("sidebar-collapsed", collapsed);
     setStorageBool(SIDEBAR_COLLAPSED_KEY, collapsed);
   }, [collapsed]);
 

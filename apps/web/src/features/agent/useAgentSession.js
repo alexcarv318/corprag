@@ -206,6 +206,7 @@ export function useAgentSession({ api, config }) {
     messages,
     mode,
     modelId,
+    resuming: Boolean(pendingResumeId),
     running: loading,
     search,
     sessions: threads,

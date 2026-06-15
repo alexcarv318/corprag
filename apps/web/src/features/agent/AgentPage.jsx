@@ -2,12 +2,13 @@ import { ChainlitContext } from "@chainlit/react-client";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useAppPreferences } from "../../hooks/useAppPreferences.js";
+import SidebarToggleIcon from "../shell/SidebarToggleIcon.jsx";
 import TopActions from "../shell/TopActions.jsx";
 import { getAgentConfig, makeChainlitApi } from "./client.js";
 import { useAgentSession } from "./useAgentSession.js";
 
 export default function AgentPage({ user, onSignOut }) {
-  const { theme, setTheme } = useAppPreferences();
+  const { theme, setTheme, collapsed, setCollapsed } = useAppPreferences();
   const [menuOpen, setMenuOpen] = useState(false);
   const [configState, setConfigState] = useState({ status: "loading", config: null, error: "" });
 
@@ -52,6 +53,8 @@ export default function AgentPage({ user, onSignOut }) {
         onSignOut={onSignOut}
         theme={theme}
         setTheme={setTheme}
+        collapsed={collapsed}
+        setCollapsed={setCollapsed}
         menuOpen={menuOpen}
         setMenuOpen={setMenuOpen}
       />
@@ -59,16 +62,30 @@ export default function AgentPage({ user, onSignOut }) {
   );
 }
 
-function AgentWorkspace({ config, user, onSignOut, theme, setTheme, menuOpen, setMenuOpen }) {
+function AgentWorkspace({ config, user, onSignOut, theme, setTheme, collapsed, setCollapsed, menuOpen, setMenuOpen }) {
   const api = useMemo(() => makeChainlitApi(config), [config]);
   const agent = useAgentSession({ api, config });
   const [draft, setDraft] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const threadRef = useRef(null);
+  const textareaRef = useRef(null);
+
+  useEffect(() => {
+    document.body.classList.remove("workflow-sidebar-collapsed");
+    document.body.classList.toggle("agent-sidebar-collapsed", collapsed);
+    return () => document.body.classList.remove("agent-sidebar-collapsed");
+  }, [collapsed]);
 
   useEffect(() => {
     threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: "smooth" });
   }, [agent.messages.length, agent.running]);
+
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    textarea.style.height = "0px";
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 170)}px`;
+  }, [draft]);
 
   function submitMessage(event) {
     event.preventDefault();
@@ -79,7 +96,11 @@ function AgentWorkspace({ config, user, onSignOut, theme, setTheme, menuOpen, se
 
   return (
     <>
-      <AgentSessionsDrawer agent={agent} />
+      <AgentSessionsDrawer
+        agent={agent}
+        collapsed={collapsed}
+        onToggle={() => setCollapsed(!collapsed)}
+      />
       <main className="agent-page-main">
         <TopActions
           menuOpen={menuOpen}
@@ -93,7 +114,9 @@ function AgentWorkspace({ config, user, onSignOut, theme, setTheme, menuOpen, se
         />
         <section className="agent-thread" ref={threadRef} aria-live="polite">
           {agent.error ? <div className="agent-error">{agent.error}</div> : null}
-          {!agent.messages.length ? (
+          {agent.resuming ? (
+            <AgentThreadLoading />
+          ) : !agent.messages.length ? (
             <AgentWelcome agent={agent} />
           ) : (
             <>
@@ -104,6 +127,7 @@ function AgentWorkspace({ config, user, onSignOut, theme, setTheme, menuOpen, se
         </section>
         <form className="agent-composer" onSubmit={submitMessage}>
           <textarea
+            ref={textareaRef}
             value={draft}
             rows={2}
             placeholder="Type your message here..."
@@ -145,20 +169,29 @@ function AgentWorkspace({ config, user, onSignOut, theme, setTheme, menuOpen, se
   );
 }
 
-function AgentSessionsDrawer({ agent }) {
+function AgentSessionsDrawer({ agent, collapsed, onToggle }) {
   const grouped = groupSessions(agent.sessions);
 
   return (
-    <aside className="agent-sessions-drawer">
+    <aside className={`agent-sessions-drawer${collapsed ? " collapsed" : ""}`}>
       <div className="sidebar-head">
         <div className="sidebar-head-row">
           <h1 className="sidebar-title">Agent</h1>
-          <button className="sidebar-toggle" type="button" title="New chat" aria-label="New chat" onClick={agent.newChat}>
-            <EditIcon />
-          </button>
-        </div>
-        <div className="sidebar-meta">
-          <span className={`status ${agent.connected ? "ok" : ""}`}>{agent.status}</span>
+          <div className="agent-sidebar-actions">
+            <button
+              className="sidebar-toggle"
+              type="button"
+              title={collapsed ? "Show sessions" : "Hide sessions"}
+              aria-label={collapsed ? "Show sessions" : "Hide sessions"}
+              aria-expanded={!collapsed}
+              onClick={onToggle}
+            >
+              <SidebarToggleIcon collapsed={collapsed} />
+            </button>
+            <button className="sidebar-toggle agent-new-chat-icon" type="button" title="New chat" aria-label="New chat" onClick={agent.newChat}>
+              <NewChatIcon />
+            </button>
+          </div>
         </div>
         <label className="agent-session-search">
           <SearchIcon />
@@ -169,9 +202,6 @@ function AgentSessionsDrawer({ agent }) {
             onChange={(event) => agent.setSearch(event.target.value)}
           />
         </label>
-        <button className="agent-new-chat-button" type="button" onClick={agent.newChat}>
-          New chat
-        </button>
       </div>
       <div id="sidebar" className="sidebar-body agent-session-groups">
         {!agent.sessions.length ? <div className="agent-session-empty">No chats yet</div> : null}
@@ -227,6 +257,10 @@ function AgentWelcome({ agent }) {
       </div>
     </div>
   );
+}
+
+function AgentThreadLoading() {
+  return <div className="agent-thread-loading">Loading chat</div>;
 }
 
 function ModePills({ agent }) {
@@ -419,6 +453,22 @@ function renderMarkdown(content) {
       blocks.push(renderTable(table));
       continue;
     }
+    const heading = lines[index].match(/^(#{1,4})\s+(.+)$/);
+    if (heading) {
+      const Level = `h${heading[1].length + 1}`;
+      blocks.push(<Level className="agent-markdown-heading" key={`h-${index}`}>{renderInline(heading[2])}</Level>);
+      index += 1;
+      continue;
+    }
+    if (/^\s*[-*]\s+/.test(lines[index])) {
+      const items = [];
+      while (index < lines.length && /^\s*[-*]\s+/.test(lines[index])) {
+        items.push(lines[index].replace(/^\s*[-*]\s+/, ""));
+        index += 1;
+      }
+      blocks.push(<ul key={`ul-${index}`}>{items.map((item) => <li key={item}>{renderInline(item)}</li>)}</ul>);
+      continue;
+    }
     if (/^\s*\d+\.\s+/.test(lines[index])) {
       const items = [];
       while (index < lines.length && /^\s*\d+\.\s+/.test(lines[index])) {
@@ -429,7 +479,7 @@ function renderMarkdown(content) {
       continue;
     }
     const paragraph = [];
-    while (index < lines.length && lines[index].trim() && !isTableStart(lines, index) && !/^\s*\d+\.\s+/.test(lines[index])) {
+    while (index < lines.length && lines[index].trim() && !isTableStart(lines, index) && !/^(#{1,4})\s+/.test(lines[index]) && !/^\s*[-*]\s+/.test(lines[index]) && !/^\s*\d+\.\s+/.test(lines[index])) {
       paragraph.push(lines[index]);
       index += 1;
     }
@@ -468,12 +518,18 @@ function renderTable(lines) {
 
 function renderInline(text) {
   const parts = [];
-  const pattern = /\[([^\]]+)]\(([^)]+)\)/g;
+  const pattern = /(\[([^\]]+)]\(([^)]+)\)|\*\*([^*]+)\*\*|`([^`]+)`)/g;
   let lastIndex = 0;
   let match = pattern.exec(text);
   while (match) {
     if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index));
-    parts.push(<a key={`${match[1]}-${match.index}`} href={match[2]}>{match[1]}</a>);
+    if (match[2]) {
+      parts.push(<a key={`a-${match.index}-${match[2]}`} href={match[3]}>{match[2]}</a>);
+    } else if (match[4]) {
+      parts.push(<strong key={`strong-${match.index}`}>{match[4]}</strong>);
+    } else if (match[5]) {
+      parts.push(<code key={`code-${match.index}`}>{match[5]}</code>);
+    }
     lastIndex = pattern.lastIndex;
     match = pattern.exec(text);
   }
@@ -499,10 +555,6 @@ function SearchIcon() {
   return <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.8" /><path d="m20 20-3.7-3.7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>;
 }
 
-function EditIcon() {
-  return <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 20h9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" /></svg>;
-}
-
 function SettingsIcon() {
   return <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" stroke="currentColor" strokeWidth="1.8" /><path d="M19.4 15a1.8 1.8 0 0 0 .4 2l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.8 1.8 0 0 0-2-.4 1.8 1.8 0 0 0-1 1.6V21a2 2 0 1 1-4 0v-.1a1.8 1.8 0 0 0-1-1.6 1.8 1.8 0 0 0-2 .4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.8 1.8 0 0 0 .4-2 1.8 1.8 0 0 0-1.6-1H3a2 2 0 1 1 0-4h.1a1.8 1.8 0 0 0 1.6-1 1.8 1.8 0 0 0-.4-2l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.8 1.8 0 0 0 2 .4 1.8 1.8 0 0 0 1-1.6V3a2 2 0 1 1 4 0v.1a1.8 1.8 0 0 0 1 1.6 1.8 1.8 0 0 0 2-.4l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.8 1.8 0 0 0-.4 2 1.8 1.8 0 0 0 1.6 1h.1a2 2 0 1 1 0 4h-.1a1.8 1.8 0 0 0-1.6 1Z" stroke="currentColor" strokeWidth="1.45" /></svg>;
 }
@@ -516,5 +568,18 @@ function StopIcon() {
 }
 
 function ChatIcon() {
-  return <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M21 12a8 8 0 0 1-8 8H7l-4 2 1.5-4A8 8 0 1 1 21 12Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" /></svg>;
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M5 7.5A3.5 3.5 0 0 1 8.5 4h7A3.5 3.5 0 0 1 19 7.5v5A3.5 3.5 0 0 1 15.5 16H11l-4 3v-3.2A3.5 3.5 0 0 1 5 12.5v-5Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function NewChatIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M5 7.5A3.5 3.5 0 0 1 8.5 4h7A3.5 3.5 0 0 1 19 7.5v5A3.5 3.5 0 0 1 15.5 16H11l-4 3v-3.2A3.5 3.5 0 0 1 5 12.5v-5Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+      <path d="M12 7.6v4.8M9.6 10h4.8" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    </svg>
+  );
 }

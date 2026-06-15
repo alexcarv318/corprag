@@ -1,8 +1,9 @@
 import { useMemo } from "react";
 
 import { WorkflowIcon } from "../workflows/WorkflowIcon.jsx";
+import SidebarToggleIcon from "./SidebarToggleIcon.jsx";
 
-export default function Sidebar({ catalog, selected, onSelect, collapsed, onToggle, status }) {
+export default function Sidebar({ catalog, selected, onSelect, collapsed, onToggle }) {
   const byCategory = useMemo(() => {
     const grouped = {};
     for (const workflow of catalog.workflows || []) {
@@ -28,14 +29,8 @@ export default function Sidebar({ catalog, selected, onSelect, collapsed, onTogg
             aria-expanded={!collapsed}
             onClick={onToggle}
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
-              <path d="M9 22H15C20 22 22 20 22 15V9C22 4 20 2 15 2H9C4 2 2 4 2 9V15C2 20 4 22 9 22Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M9 2V22" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <SidebarToggleIcon collapsed={collapsed} />
           </button>
-        </div>
-        <div className="sidebar-meta">
-          <span className={`status ${status.tone || ""}`} id="server-status">{status.text}</span>
         </div>
       </div>
       <div id="sidebar" className="sidebar-body">
