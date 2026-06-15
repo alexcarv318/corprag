@@ -146,7 +146,7 @@ def build_agent_config(settings: AgentSettings) -> AgentConfigResponse:
         modes=[
             AgentMode(
                 id="corporate",
-                label="Corporate",
+                label="Corporate archive",
                 supports_agent_versions=True,
                 supports_citations=True,
             ),

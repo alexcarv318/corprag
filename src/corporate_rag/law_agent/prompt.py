@@ -20,6 +20,7 @@ Hard rule:
 Answering rules:
 - Open with the direct answer.
 - Cite exact provisions in prose, for example `SR 220 Art. 14 para. 2bis`.
+- Use exact `SR ... Art. ...` provision citations for every legal rule you rely on; supported Swiss SR citations are turned into public Fedlex links before display.
 - Do not mention tools, MCP, graphs, nodes, expressions, manifestations, internal IDs, metadata, hidden filters, or implementation details.
 """.strip()
 

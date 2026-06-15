@@ -431,6 +431,24 @@ aside .item.agent-session-row .workflow-icon svg {
   text-decoration: underline;
 }
 
+.agent-message-content a.agent-law-citation-link {
+  background: color-mix(in srgb, var(--fg) 8%, transparent);
+  border-radius: 4px;
+  color: var(--fg);
+  display: inline;
+  font-family: var(--mono);
+  font-size: 0.9em;
+  font-weight: 500;
+  padding: 1px 4px;
+  text-decoration: none;
+  vertical-align: baseline;
+}
+
+.agent-message-content a.agent-law-citation-link:hover {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+}
+
 .agent-table-wrap {
   border: 1px solid var(--border-strong);
   border-radius: 8px;

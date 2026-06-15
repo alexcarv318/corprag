@@ -612,18 +612,21 @@ function renderInline(text, onSourceOpen, messageSources = []) {
     if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index));
     if (match[2]) {
       const source = sourceFromCitationHref(match[3]);
+      const lawCitation = source ? null : lawCitationFromMarkdownLink(match[2], match[3]);
       parts.push(
         <a
-          className={source ? "agent-citation-link" : undefined}
+          className={source ? "agent-citation-link" : lawCitation ? "agent-law-citation-link" : undefined}
           href={match[3]}
           key={`a-${match.index}-${match[2]}`}
-          title={source ? "Open source document" : undefined}
+          title={source ? "Open source document" : lawCitation ? "Open on Fedlex" : undefined}
+          target={lawCitation ? "_blank" : undefined}
+          rel={lawCitation ? "noopener noreferrer" : undefined}
           onClick={source && onSourceOpen ? (event) => {
             event.preventDefault();
             onSourceOpen(source, messageSources);
           } : undefined}
         >
-          {match[2]}
+          {lawCitation ? lawCitation.label : match[2]}
         </a>
       );
     } else if (match[4]) {
@@ -655,6 +658,24 @@ function renderInline(text, onSourceOpen, messageSources = []) {
   }
   if (lastIndex < text.length) parts.push(text.slice(lastIndex));
   return parts;
+}
+
+function lawCitationFromMarkdownLink(label, href) {
+  if (!isFedlexHref(href)) return null;
+  const trimmed = String(label || "").trim();
+  const codeMatch = /^`([^`]+)`$/.exec(trimmed);
+  const citationLabel = codeMatch ? codeMatch[1] : trimmed;
+  if (!/^SR\s+\d+(?:\.\d+)*\s+Art\.\s+\d+/i.test(citationLabel)) return null;
+  return { label: citationLabel };
+}
+
+function isFedlexHref(href) {
+  try {
+    const url = new URL(href, window.location.origin);
+    return url.hostname === "www.fedlex.admin.ch" || url.hostname === "fedlex.admin.ch";
+  } catch {
+    return false;
+  }
 }
 
 function sourcesFromContent(content) {
