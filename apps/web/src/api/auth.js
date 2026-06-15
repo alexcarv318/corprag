@@ -50,5 +50,9 @@ export async function verifyStoredSession() {
 }
 
 export function signOut() {
+  apiFetch("/api/auth/sign-out", {
+    method: "POST",
+    suppressAuthExpired: true
+  }).catch(() => {});
   clearAuthSession();
 }

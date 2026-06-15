@@ -18,6 +18,7 @@ from corporate_rag.auth.repository import (
     InvalidUsernameError,
 )
 from corporate_rag.auth.tokens import create_access_token
+from corporate_rag.logger import log_user_logged_in, log_user_logged_out
 from corporate_rag.settings import AuthSettings
 
 router = APIRouter(
@@ -69,6 +70,7 @@ async def sign_in(
     if user is None:
         raise HTTPException(status_code=401, detail="invalid username or password")
 
+    log_user_logged_in(user)
     response.headers["Cache-Control"] = "no-store"
     public_user = AuthUserResponse(id=user.id, username=user.username)
     return AuthTokenResponse(
@@ -88,3 +90,13 @@ async def sign_in(
 )
 async def me(user: Annotated[AuthUser, Depends(current_user)]) -> AuthUserResponse:
     return AuthUserResponse(id=user.id, username=user.username)
+
+
+@router.post(
+    "/sign-out",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Record password user sign out",
+)
+async def sign_out(user: Annotated[AuthUser, Depends(current_user)]) -> Response:
+    log_user_logged_out(user)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

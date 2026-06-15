@@ -48,6 +48,7 @@ def test_neo4j_client_opens_driver_lazily_with_settings() -> None:
         connection_acquisition_timeout_seconds=22.0,
         connection_timeout_seconds=3.0,
         keep_alive=False,
+        notifications_min_severity="OFF",
     )
     recorder = DriverFactoryRecorder()
     driver_factory = cast(Callable[..., Driver], recorder)
@@ -67,6 +68,7 @@ def test_neo4j_client_opens_driver_lazily_with_settings() -> None:
         "connection_acquisition_timeout": 22.0,
         "connection_timeout": 3.0,
         "keep_alive": False,
+        "notifications_min_severity": "OFF",
     }
 
 

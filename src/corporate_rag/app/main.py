@@ -17,6 +17,7 @@ from corporate_rag.evidence.router import router as evidence_router
 from corporate_rag.facets.router import router as facets_router
 from corporate_rag.graph.interfaces import BaseGraphReader
 from corporate_rag.graph.neo4j_client import build_corporate_graph_client
+from corporate_rag.logger import configure_logging
 from corporate_rag.settings import (
     AppSettings,
     load_agent_settings,
@@ -73,6 +74,7 @@ def create_app(
     configure_workflows: bool = True,
 ) -> FastAPI:
     resolved_settings = settings or load_app_settings()
+    configure_logging(resolved_settings.log_level)
     resolved_workflow_engine = workflow_engine
     resolved_graph_reader = graph_reader
     if resolved_workflow_engine is None and configure_workflows:

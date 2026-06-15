@@ -2,7 +2,9 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Path
 
-from corporate_rag.app.dependencies import workflow_engine
+from corporate_rag.app.dependencies import current_user, workflow_engine
+from corporate_rag.auth.models import AuthUser
+from corporate_rag.logger import log_user_ran_workflow
 from corporate_rag.workflows.engine import WorkflowEngine
 from corporate_rag.workflows.models import (
     Workflow,
@@ -122,6 +124,7 @@ async def workflow_definition(
 )
 async def run_workflow(
     engine: Annotated[WorkflowEngine, Depends(workflow_engine)],
+    user: Annotated[AuthUser, Depends(current_user)],
     workflow_id: Annotated[
         str,
         Path(description=WORKFLOW_ID_DESCRIPTION, examples=["find.subject"]),
@@ -141,6 +144,7 @@ async def run_workflow(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    log_user_ran_workflow(user, workflow_id, payload.parameters)
     return workflow_result_public_payload(result)
 
 

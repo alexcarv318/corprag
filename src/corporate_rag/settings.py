@@ -18,6 +18,7 @@ class Neo4jSettings(BaseSettings):
     connection_acquisition_timeout_seconds: float = 60.0
     connection_timeout_seconds: float = 30.0
     keep_alive: bool = True
+    notifications_min_severity: str | None = "OFF"
 
 
 class AppSettings(BaseSettings):

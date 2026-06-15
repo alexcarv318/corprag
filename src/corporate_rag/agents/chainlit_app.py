@@ -6,7 +6,6 @@ from chainlit.data.sql_alchemy import SQLAlchemyDataLayer
 from chainlit.types import ThreadDict
 from langchain_core.runnables import RunnableConfig
 
-from corporate_rag.law_agent.citations import finalize_message
 from corporate_rag.agents.catalog import AgentModeId, starters_for_mode
 from corporate_rag.agents.data_layer import ProductUserSQLAlchemyDataLayer
 from corporate_rag.agents.handoff import (
@@ -28,6 +27,8 @@ from corporate_rag.agents.tool_output import (
     reset_tool_event_observer,
     set_tool_event_observer,
 )
+from corporate_rag.law_agent.citations import finalize_message
+from corporate_rag.logger import log_user_got_response, log_user_ran_agent
 from corporate_rag.settings import (
     load_agent_settings,
     load_auth_settings,
@@ -116,6 +117,8 @@ async def on_settings_update(settings: dict[str, Any]) -> None:
 async def on_message(message: cl.Message) -> None:
     session = await ensure_agent_session()
     mode = current_mode()
+    chainlit_user = _current_user()
+    log_user_ran_agent(chainlit_user, _agent_name(mode), message.content)
     config = RunnableConfig(configurable={"thread_id": cl.context.session.thread_id})
 
     final_message = cl.Message(content="", author="Lawrag" if mode == "law" else "Corprag")
@@ -135,6 +138,7 @@ async def on_message(message: cl.Message) -> None:
         reset_tool_event_observer(observer_token)
 
     await _finalize_message(final_message, "".join(raw_buffer), mode=mode)
+    log_user_got_response(chainlit_user, final_message.content)
     mark_history_synced()
 
 
@@ -149,6 +153,14 @@ def _token_text(token: Any) -> str:
 
 def _should_stream_token(metadata: Any) -> bool:
     return isinstance(metadata, dict) and metadata.get("langgraph_node") in {"agent", "model"}
+
+
+def _current_user() -> Any:
+    return getattr(cl.context.session, "user", None)
+
+
+def _agent_name(mode: AgentModeId) -> str:
+    return "Law" if mode == "law" else "Corporate"
 
 
 async def _finalize_message(

@@ -42,6 +42,7 @@ def clear_settings_environment(
         "CORPORATE_RAG_NEO4J_CONNECTION_ACQUISITION_TIMEOUT_SECONDS",
         "CORPORATE_RAG_NEO4J_CONNECTION_TIMEOUT_SECONDS",
         "CORPORATE_RAG_NEO4J_KEEP_ALIVE",
+        "CORPORATE_RAG_NEO4J_NOTIFICATIONS_MIN_SEVERITY",
     )
     for key in environment_keys:
         monkeypatch.delenv(key, raising=False)
@@ -85,6 +86,7 @@ def test_neo4j_settings_defaults_match_local_development() -> None:
     assert settings.connection_acquisition_timeout_seconds == 60.0
     assert settings.connection_timeout_seconds == 30.0
     assert settings.keep_alive is True
+    assert settings.notifications_min_severity == "OFF"
 
 
 def test_database_settings_defaults_match_local_development() -> None:
@@ -159,6 +161,7 @@ def test_neo4j_settings_accept_explicit_values() -> None:
         connection_acquisition_timeout_seconds=10.0,
         connection_timeout_seconds=5.0,
         keep_alive=False,
+        notifications_min_severity=None,
     )
 
     assert settings.uri == "neo4j+s://graph.example.test"
@@ -170,6 +173,7 @@ def test_neo4j_settings_accept_explicit_values() -> None:
     assert settings.connection_acquisition_timeout_seconds == 10.0
     assert settings.connection_timeout_seconds == 5.0
     assert settings.keep_alive is False
+    assert settings.notifications_min_severity is None
 
 
 def test_neo4j_settings_accept_environment_overrides(
@@ -184,6 +188,7 @@ def test_neo4j_settings_accept_environment_overrides(
     monkeypatch.setenv("CORPORATE_RAG_NEO4J_CONNECTION_ACQUISITION_TIMEOUT_SECONDS", "12.5")
     monkeypatch.setenv("CORPORATE_RAG_NEO4J_CONNECTION_TIMEOUT_SECONDS", "6.5")
     monkeypatch.setenv("CORPORATE_RAG_NEO4J_KEEP_ALIVE", "false")
+    monkeypatch.setenv("CORPORATE_RAG_NEO4J_NOTIFICATIONS_MIN_SEVERITY", "WARNING")
 
     settings = Neo4jSettings()
 
@@ -196,3 +201,4 @@ def test_neo4j_settings_accept_environment_overrides(
     assert settings.connection_acquisition_timeout_seconds == 12.5
     assert settings.connection_timeout_seconds == 6.5
     assert settings.keep_alive is False
+    assert settings.notifications_min_severity == "WARNING"

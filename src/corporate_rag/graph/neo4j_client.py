@@ -40,6 +40,7 @@ class Neo4jClient(BaseGraphReader):
             connection_acquisition_timeout=self.settings.connection_acquisition_timeout_seconds,
             connection_timeout=self.settings.connection_timeout_seconds,
             keep_alive=self.settings.keep_alive,
+            notifications_min_severity=self.settings.notifications_min_severity,
         )
 
     @property
