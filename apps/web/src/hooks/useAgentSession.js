@@ -8,7 +8,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSetRecoilState } from "recoil";
 
-import { createAgentHandoff, flattenSteps, makeId, normalizeStep, nowIso } from "./client.js";
+import { createAgentHandoff, flattenSteps, makeId, normalizeStep, nowIso } from "../features/agent/client.js";
 
 function settingsFor({ mode, modelId, agentVersion }) {
   const settings = {

@@ -5,7 +5,7 @@ import { useAppPreferences } from "../../hooks/useAppPreferences.js";
 import SidebarToggleIcon from "../shell/SidebarToggleIcon.jsx";
 import TopActions from "../shell/TopActions.jsx";
 import { getAgentConfig, makeChainlitApi } from "./client.js";
-import { useAgentSession } from "./useAgentSession.js";
+import { useAgentSession } from "../../hooks/useAgentSession.js";
 
 export default function AgentPage({ user, onSignOut }) {
   const { theme, setTheme, collapsed, setCollapsed } = useAppPreferences();
